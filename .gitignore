@@ -4,7 +4,11 @@ out
 coverage
 playwright-report
 test-results
+.tmp
 .env
 .env.local
 *.db
 *.db-journal
+*.db-shm
+*.db-wal
+*.tsbuildinfo

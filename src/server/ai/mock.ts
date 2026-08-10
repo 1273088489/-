@@ -1,5 +1,58 @@
 import type { AiProvider, CoachParams, CoachResult, ReviewInput, ReviewResult, ChoiceLabInput, ChoiceLabResult } from "./types";
 
+function stripCommentsAndStrings(source: string): string {
+  let result = "";
+  let state: "code" | "lineComment" | "blockComment" | "single" | "double" | "template" = "code";
+  let escaped = false;
+  for (let index = 0; index < source.length; index += 1) {
+    const char = source[index];
+    const next = source[index + 1];
+    if (state === "lineComment") {
+      if (char === "\n") {
+        result += char;
+        state = "code";
+      } else result += " ";
+      continue;
+    }
+    if (state === "blockComment") {
+      if (char === "*" && next === "/") {
+        result += "  ";
+        index += 1;
+        state = "code";
+      } else result += char === "\n" ? "\n" : " ";
+      continue;
+    }
+    if (state === "single" || state === "double" || state === "template") {
+      if (escaped) escaped = false;
+      else if (char === "\\") escaped = true;
+      else if ((state === "single" && char === "'") || (state === "double" && char === '"') || (state === "template" && char === "`")) state = "code";
+      result += char === "\n" ? "\n" : " ";
+      continue;
+    }
+    if (char === "/" && next === "/") {
+      result += "  ";
+      index += 1;
+      state = "lineComment";
+    } else if (char === "/" && next === "*") {
+      result += "  ";
+      index += 1;
+      state = "blockComment";
+    } else if (char === "'") {
+      result += " ";
+      state = "single";
+    } else if (char === '"') {
+      result += " ";
+      state = "double";
+    } else if (char === "`") {
+      result += " ";
+      state = "template";
+    } else {
+      result += char;
+    }
+  }
+  return result;
+}
+
 /**
  * Mock AiProvider — 规则化本地回复，保证无 API key 时全功能可运行、可演示、可测试。
  * 提供真实的启发式判断：评分来自关键词/长度启发，反馈是结构化、可解释的。
@@ -50,7 +103,8 @@ export class MockAiProvider implements AiProvider {
     }
 
     if (/console\.log/i.test(code)) suggestions.push("保留关键日志即可，避免遗留调试输出。");
-    if (/try\s*\{/.test(code) && !/catch/i.test(code)) {
+    const executableCode = stripCommentsAndStrings(code);
+    if (/\btry\s*\{/.test(executableCode) && !/\bcatch\s*(?:\([^)]*\))?\s*\{/.test(executableCode)) {
       checklist.push({ severity: "suggestion", message: "try 块应配套 catch，否则错误会静默丢失。", evidence: "try 后未见 catch" });
       score = Math.max(0, score - 8);
     }
@@ -75,19 +129,28 @@ export class MockAiProvider implements AiProvider {
 
   async evaluateChoice(input: ChoiceLabInput): Promise<ChoiceLabResult> {
     const { options, selectedOption } = input;
-    let rationale = input.rationale || "";
+    const rationale = input.rationale?.trim() || "";
     let score = 50;
     const feedback: string[] = [];
-    rationale = rationale || "";
     if (!rationale) {
       feedback.push("你没有说明理由。选型最重要的不是选什么，而是为什么。");
       score = 20;
-    } else if (rationale.includes("业务") || rationale.includes("需求") || rationale.includes("团队") || rationale.includes("成本")) {
-      feedback.push("你的理由提到了需求/团队/成本等约束，方向正确。");
-      score += 25;
     } else {
-      feedback.push("理由偏泛，建议从需求、团队经验、维护成本、迁移风险四方面具体论证。");
-      score += 10;
+      const dimensions = [
+        /需求|业务/.test(rationale),
+        /团队经验|团队|熟悉/.test(rationale),
+        /维护成本|维护|成本/.test(rationale),
+        /迁移风险|迁移/.test(rationale),
+      ];
+      const covered = dimensions.filter(Boolean).length;
+      if (covered === dimensions.length) {
+        feedback.push("高质量论证覆盖了需求、团队经验、维护成本、迁移风险四个维度，且明确说明了取舍。");
+      } else if (covered > 0) {
+        feedback.push("你的理由提到了部分约束，建议继续从需求、团队经验、维护成本、迁移风险四方面具体论证。");
+      } else {
+        feedback.push("理由偏泛，建议从需求、团队经验、维护成本、迁移风险四方面具体论证。");
+      }
+      score += covered > 0 ? 25 : 10;
     }
     if (!selectedOption && options.length) {
       feedback.push("你还没有选择具体方案。");
@@ -96,7 +159,7 @@ export class MockAiProvider implements AiProvider {
       feedback.push(`你选择了「${selectedOption}」。请用两句话说明它比其它候选（${options.join(" / ")}）在该场景下的优势与代价。`);
       if (options.length && options[0] === selectedOption) score += 15;
     }
-    const final = Math.min(100, Math.max(0, score));
+    const final = rationale ? Math.min(100, Math.max(0, score)) : Math.min(30, Math.max(0, score));
     feedback.push(`本场景评分：${final}/100。评分取决于论证质量而非是否命中“标准答案”。`);
     return { score: final, feedback: feedback.join("\n") };
   }

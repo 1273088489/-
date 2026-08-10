@@ -9,6 +9,7 @@
     "dev": "next dev",
     "build": "next build",
     "start": "next start",
+    "setup": "npm run db:push && npm run db:seed",
     "typecheck": "tsc --noEmit",
     "db:generate": "drizzle-kit generate",
     "db:push": "drizzle-kit push",
@@ -16,7 +17,7 @@
     "test": "vitest run",
     "test:watch": "vitest",
     "test:e2e": "playwright test",
-    "lint": "next lint"
+    "check": "npm run typecheck && npm run test && npm run build"
   },
   "dependencies": {
     "better-sqlite3": "latest",

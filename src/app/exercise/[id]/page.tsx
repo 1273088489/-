@@ -1,0 +1,147 @@
+"use client";
+
+import Link from "next/link";
+import { useParams } from "next/navigation";
+import { useCallback, useEffect, useState } from "react";
+import { EmptyView, ErrorView, LoadingView, ProgressBar } from "@/components";
+import { ApiError, apiExercise, apiSubmitExercise } from "@/lib/client/api";
+import { demoExercise, gradeDemoExercise } from "@/lib/demoData";
+import type { ExerciseDetail, ExerciseResult } from "@/types";
+
+export default function ExercisePage() {
+  const { id } = useParams<{ id: string }>();
+  const [exercise, setExercise] = useState<ExerciseDetail | null>(null);
+  const [loading, setLoading] = useState(true);
+  const [error, setError] = useState<string | null>(null);
+  const [usingDemo, setUsingDemo] = useState(false);
+  const [answer, setAnswer] = useState("");
+  const [submitting, setSubmitting] = useState(false);
+  const [result, setResult] = useState<ExerciseResult | null>(null);
+  const [submitError, setSubmitError] = useState<string | null>(null);
+  const [visibleHints, setVisibleHints] = useState(0);
+
+  const load = useCallback(async () => {
+    if (!id) return;
+    setLoading(true);
+    setError(null);
+    setResult(null);
+    try {
+      setExercise(await apiExercise(id));
+      setUsingDemo(false);
+    } catch (err) {
+      const fallback = demoExercise(id);
+      setExercise(fallback);
+      setUsingDemo(Boolean(fallback));
+      if (!fallback) setError(err instanceof ApiError ? err.message : "练习加载失败");
+    } finally {
+      setLoading(false);
+    }
+  }, [id]);
+
+  useEffect(() => {
+    void load();
+  }, [load]);
+
+  async function handleSubmit(event: React.FormEvent) {
+    event.preventDefault();
+    if (!exercise || !answer.trim()) {
+      setSubmitError("请先填写或选择答案。");
+      return;
+    }
+    setSubmitting(true);
+    setSubmitError(null);
+    setResult(null);
+    try {
+      const next = usingDemo ? gradeDemoExercise(exercise, answer) : await apiSubmitExercise(exercise.id, answer);
+      setResult(next);
+    } catch (err) {
+      setSubmitError(err instanceof ApiError ? err.message : "答案提交失败，请稍后重试。");
+    } finally {
+      setSubmitting(false);
+    }
+  }
+
+  if (loading) return <PageShell><LoadingView label="正在加载练习…" /></PageShell>;
+  if (error && !exercise) return <PageShell><ErrorView message={error} onRetry={load} /></PageShell>;
+  if (!exercise) {
+    return <PageShell><EmptyView message="练习不存在" hint="请返回课时重新选择练习。" action={<Link href="/dashboard" className="rounded-lg bg-indigo-600 px-4 py-2 text-sm font-medium text-white">返回仪表盘</Link>} /></PageShell>;
+  }
+
+  const textAreaClass = "min-h-44 w-full resize-y rounded-xl border border-gray-300 bg-white px-4 py-3 font-mono text-sm leading-6 text-gray-900 outline-none focus:border-indigo-500 focus:ring-2 focus:ring-indigo-500/20";
+
+  return (
+    <PageShell>
+      <div className="flex flex-wrap items-center justify-between gap-3">
+        <Link href={`/lesson/${exercise.lessonSlug}`} className="text-sm font-medium text-indigo-600 hover:text-indigo-700">← {exercise.lessonTitle}</Link>
+        {usingDemo ? <span className="rounded-full border border-amber-200 bg-amber-50 px-3 py-1 text-xs font-medium text-amber-800">演示练习</span> : null}
+      </div>
+
+      <section className="mt-6 rounded-2xl border border-gray-200 bg-white p-6 shadow-sm sm:p-8">
+        <div className="flex items-start justify-between gap-4">
+          <div>
+            <p className="text-xs font-semibold uppercase text-indigo-600">{answerTypeLabel(exercise.answerType)}</p>
+            <h1 className="mt-2 text-xl font-bold leading-8 text-gray-950">{exercise.prompt}</h1>
+          </div>
+          <span className="shrink-0 text-sm font-semibold text-gray-500">{exercise.mastery ?? 0}%</span>
+        </div>
+        <ProgressBar value={exercise.mastery ?? 0} className="mt-5" />
+
+        <form onSubmit={handleSubmit} className="mt-8">
+          {exercise.answerType === "choices" ? (
+            <fieldset className="space-y-3">
+              <legend className="mb-3 text-sm font-semibold text-gray-800">选择一个答案</legend>
+              {exercise.choices.map((choice) => (
+                <label key={choice} className={`flex cursor-pointer items-start gap-3 rounded-xl border p-4 transition ${answer === choice ? "border-indigo-500 bg-indigo-50" : "border-gray-200 hover:border-gray-300"}`}>
+                  <input type="radio" name="answer" value={choice} checked={answer === choice} onChange={(event) => setAnswer(event.target.value)} className="mt-1 accent-indigo-600" />
+                  <span className="text-sm leading-6 text-gray-800">{choice}</span>
+                </label>
+              ))}
+            </fieldset>
+          ) : (
+            <div>
+              <label htmlFor="answer" className="mb-2 block text-sm font-semibold text-gray-800">{exercise.answerType === "code" ? "你的代码" : "你的回答"}</label>
+              <textarea id="answer" value={answer} onChange={(event) => setAnswer(event.target.value)} placeholder={exercise.answerType === "code" ? "在这里粘贴或编写代码…" : "说明你的思路、步骤与取舍…"} className={textAreaClass} spellCheck={exercise.answerType !== "code"} />
+            </div>
+          )}
+
+          {submitError ? <p className="mt-4 rounded-lg bg-red-50 px-4 py-3 text-sm text-red-700">{submitError}</p> : null}
+          <button type="submit" disabled={submitting || !answer.trim()} className="mt-5 rounded-xl bg-indigo-600 px-6 py-2.5 text-sm font-semibold text-white transition hover:bg-indigo-700 disabled:cursor-not-allowed disabled:opacity-50">
+            {submitting ? "判分中…" : "提交答案"}
+          </button>
+        </form>
+      </section>
+
+      {exercise.hints.length > 0 ? (
+        <section className="mt-6 rounded-2xl border border-gray-200 bg-white p-5">
+          <div className="flex items-center justify-between gap-4">
+            <div>
+              <h2 className="text-base font-semibold text-gray-900">分级提示</h2>
+              <p className="mt-1 text-sm text-gray-500">先独立思考，需要时逐条查看。</p>
+            </div>
+            <button type="button" disabled={visibleHints >= exercise.hints.length} onClick={() => setVisibleHints((count) => Math.min(exercise.hints.length, count + 1))} className="rounded-lg border border-gray-300 px-3 py-2 text-sm font-medium text-gray-700 disabled:opacity-40">显示下一条</button>
+          </div>
+          {visibleHints > 0 ? <ol className="mt-4 list-decimal space-y-2 pl-5 text-sm leading-6 text-gray-700">{exercise.hints.slice(0, visibleHints).map((hint) => <li key={hint}>{hint}</li>)}</ol> : null}
+        </section>
+      ) : null}
+
+      {result ? (
+        <section className={`mt-6 rounded-2xl border p-6 ${result.correct ? "border-emerald-200 bg-emerald-50" : "border-amber-200 bg-amber-50"}`}>
+          <div className="flex flex-wrap items-center justify-between gap-3">
+            <h2 className={`text-lg font-bold ${result.correct ? "text-emerald-800" : "text-amber-900"}`}>{result.correct ? "回答正确" : "继续打磨"}</h2>
+            <span className="text-sm font-semibold text-gray-700">掌握度 {result.mastery}%</span>
+          </div>
+          <p className="mt-3 text-sm leading-6 text-gray-700">{result.feedback}</p>
+          {!result.correct && exercise.rubric.length > 0 ? <div className="mt-4"><p className="text-sm font-semibold text-gray-800">自查标准</p><ul className="mt-2 list-disc space-y-1 pl-5 text-sm text-gray-700">{exercise.rubric.map((item) => <li key={item}>{item}</li>)}</ul></div> : null}
+        </section>
+      ) : null}
+    </PageShell>
+  );
+}
+
+function PageShell({ children }: { children: React.ReactNode }) {
+  return <div className="mx-auto max-w-4xl px-4 py-10 sm:px-6">{children}</div>;
+}
+
+function answerTypeLabel(type: ExerciseDetail["answerType"]): string {
+  return type === "choices" ? "选择题" : type === "code" ? "代码题" : "问答题";
+}

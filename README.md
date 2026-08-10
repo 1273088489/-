@@ -46,8 +46,11 @@ Quanzhan/
 ## 运行方式
 ```bash
 npm install
-npm run db:push   # 初始化 SQLite schema
-npm run db:seed   # 导入课程种子
+npm run setup     # 初始化 SQLite schema 并导入课程种子
 npm run dev       # 开发模式
 npm run test      # 单元测试
 ```
+
+默认访问地址：`http://localhost:3000`。首次进入先注册账号；未配置 AI Key 时会自动使用本地 Mock AI，代码审查、分级提示和选型实验仍可完整演示。
+
+截至 2026-08-10，本项目安装并验证的主要版本为 Next.js 16.3.0、React 19.2.8、TypeScript 7.0.2、Drizzle ORM 0.45.2、better-sqlite3 13.0.3、Vitest 4.1.10 与 Playwright 1.62.1。
