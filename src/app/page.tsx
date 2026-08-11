@@ -74,7 +74,7 @@ export default function HomePage() {
         <div className="mx-auto mt-12 grid max-w-3xl grid-cols-2 gap-4 sm:grid-cols-4">
           {[
             { k: "4", v: "个实战阶段" },
-            { k: "9+", v: "道练习题" },
+            { k: "15", v: "道练习题" },
             { k: "4", v: "个阶段项目" },
             { k: "24/7", v: "AI 教练陪伴" },
           ].map((item) => (

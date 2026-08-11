@@ -60,6 +60,7 @@ function LoginForm() {
         const session = await apiRegister({ email: email.trim(), name: name.trim(), password });
         if (session.user) localStorage.setItem("qz_user", JSON.stringify(session.user));
       }
+      window.dispatchEvent(new Event("qz:auth-changed"));
       router.push("/dashboard");
       router.refresh();
     } catch (err) {

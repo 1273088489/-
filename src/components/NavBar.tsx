@@ -16,20 +16,27 @@ export default function NavBar() {
 
   useEffect(() => {
     let cancelled = false;
-    apiMe()
-      .then((u) => {
-        if (!cancelled) {
-          setUser(Array.isArray(u) ? (u[0] ?? null) : u);
+    let requestId = 0;
+    const refreshUser = async () => {
+      const currentRequest = ++requestId;
+      try {
+        const nextUser = await apiMe();
+        if (!cancelled && currentRequest === requestId) {
+          setUser(Array.isArray(nextUser) ? (nextUser[0] ?? null) : nextUser);
         }
-      })
-      .catch(() => {
-        if (!cancelled) setUser(null);
-      })
-      .finally(() => {
-        if (!cancelled) setChecked(true);
-      });
+      } catch {
+        if (!cancelled && currentRequest === requestId) setUser(null);
+      } finally {
+        if (!cancelled && currentRequest === requestId) setChecked(true);
+      }
+    };
+    const handleAuthChanged = () => void refreshUser();
+
+    void refreshUser();
+    window.addEventListener("qz:auth-changed", handleAuthChanged);
     return () => {
       cancelled = true;
+      window.removeEventListener("qz:auth-changed", handleAuthChanged);
     };
   }, []);
 

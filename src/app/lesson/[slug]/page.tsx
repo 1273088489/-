@@ -4,7 +4,6 @@ import Link from "next/link";
 import { useParams } from "next/navigation";
 import { useCallback, useEffect, useState } from "react";
 import { ApiError, apiLesson, apiCompleteLesson } from "@/lib/client/api";
-import { demoLesson } from "@/lib/demoLesson";
 import { Card, EmptyView, ErrorView, LoadingView, Markdown } from "@/components";
 import type { LessonDetail } from "@/types";
 
@@ -15,7 +14,6 @@ export default function LessonPage() {
   const [lesson, setLesson] = useState<LessonDetail | null>(null);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
-  const [usingDemo, setUsingDemo] = useState(false);
   const [completing, setCompleting] = useState(false);
   const [completed, setCompleted] = useState(false);
   const [completeMsg, setCompleteMsg] = useState<string | null>(null);
@@ -28,16 +26,9 @@ export default function LessonPage() {
     try {
       const data = await apiLesson(slug);
       setLesson(data);
-      setUsingDemo(false);
     } catch (err) {
       setError(err instanceof ApiError ? err.message : "课时加载失败");
-      const fallback = demoLesson(slug);
-      if (fallback) {
-        setLesson(fallback);
-        setUsingDemo(true);
-      } else {
-        setLesson(null);
-      }
+      setLesson(null);
     } finally {
       setLoading(false);
     }
@@ -61,11 +52,6 @@ export default function LessonPage() {
         setCompleteErr(`请求失败：${err.message}`);
       } else {
         setCompleteErr("发生未知错误，请稍后重试。");
-      }
-      // 乐观更新：即使 API 未就绪，也在本地提示演示完成。
-      if (err instanceof ApiError && (err.status === 404 || err.status === 405)) {
-        setCompleted(true);
-        setCompleteMsg("API 尚未就绪，已在本地模拟完成状态（真实环境将写入学习记录）。");
       }
     } finally {
       setCompleting(false);
@@ -102,9 +88,6 @@ export default function LessonPage() {
         <Link href={`/course/${lesson.courseSlug ?? "#"}`} className="text-sm font-medium text-indigo-600 hover:text-indigo-700">
           ← {lesson.courseTitle ?? "返回课程"}
         </Link>
-        {usingDemo ? (
-          <span className="rounded-full border border-amber-200 bg-amber-50 px-3 py-1 text-xs font-medium text-amber-800">演示数据</span>
-        ) : null}
       </div>
 
       <div className="mt-6 rounded-2xl border border-gray-200 bg-white p-6 shadow-sm sm:p-8">

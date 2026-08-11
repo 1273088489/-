@@ -2,10 +2,11 @@ import { z } from "zod";
 import { NextRequest } from "next/server";
 import { eq } from "drizzle-orm";
 import { getSessionUser } from "@/server/auth/session";
-import { appDb, getAiProvider } from "@/server/review/service";
+import { appDb, getAiProvider, parseProjectRubric } from "@/server/review/service";
 import { stageProjects, projectAttempts, reviewFeedbacks } from "@/server/db/schema";
 import { describeAiProviderError } from "@/server/ai/errors";
-import { parseJsonArray, parseStringArray } from "@/server/ai/json";
+import { parseJson, parseJsonArray, parseStringArray } from "@/server/ai/json";
+import { buildProjectReviewInput } from "@/server/review/service";
 import { ok, fail, parseBody } from "@/lib/api";
 
 // POST /api/ai/review
@@ -28,15 +29,19 @@ export async function POST(req: NextRequest) {
 
   const project = appDb.select().from(stageProjects).where(eq(stageProjects.id, attempt.projectId)).get();
   if (!project) return fail("项目不存在", 404);
+  const rubric = parseProjectRubric(project.rubric);
+  if (!rubric) return fail("项目评分标准无效，暂不能评审", 500);
 
   let review;
   try {
     const provider = getAiProvider();
-    review = await provider.review({
+    review = await provider.review(buildProjectReviewInput({
       code: attempt.code,
-      taskDescription: project.title,
+      title: project.title,
+      description: project.description,
       acceptanceCriteria: parseStringArray(project.acceptanceCriteria),
-    });
+      rubric,
+    }));
   } catch (error) {
     const failure = describeAiProviderError(error, "代码评审");
     return fail(failure.message, 502, { code: failure.code, attemptId: attempt.id });

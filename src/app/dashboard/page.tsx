@@ -3,7 +3,6 @@
 import Link from "next/link";
 import { useCallback, useEffect, useState } from "react";
 import { ApiError, apiProgress } from "@/lib/client/api";
-import { demoCourseFallback } from "@/lib/demoData";
 import { Card, EmptyView, ErrorView, LoadingView, ProgressBar } from "@/components";
 import type { LearningStatus, ProgressOverview } from "@/types";
 
@@ -19,7 +18,6 @@ export default function DashboardPage() {
   const [progress, setProgress] = useState<ProgressOverview | null>(null);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
-  const [usingDemo, setUsingDemo] = useState(false);
 
   const load = useCallback(async () => {
     setLoading(true);
@@ -27,11 +25,9 @@ export default function DashboardPage() {
     try {
       const data = await apiProgress();
       setProgress(data);
-      setUsingDemo(false);
     } catch (err) {
       setError(err instanceof ApiError ? err.message : "进度加载失败");
-      setProgress(demoCourseFallback());
-      setUsingDemo(true);
+      setProgress(null);
     } finally {
       setLoading(false);
     }
@@ -79,9 +75,6 @@ export default function DashboardPage() {
           <h1 className="text-3xl font-bold text-gray-900">学习仪表盘</h1>
           <p className="mt-1 text-sm text-gray-500">你的全栈学习旅程，从这里继续。</p>
         </div>
-        {usingDemo ? (
-          <span className="rounded-full border border-amber-200 bg-amber-50 px-3 py-1 text-xs font-medium text-amber-800">演示数据（API 未就绪）</span>
-        ) : null}
       </div>
 
       {/* 统计卡片 */}

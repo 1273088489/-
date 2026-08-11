@@ -12,11 +12,29 @@ export interface CoachResult {
   mode: "hint" | "solution";
 }
 
+export interface ProjectRubricCriterion {
+  id: string;
+  criterion: string;
+  weight: number;
+  evidence: string[];
+  levels: {
+    excellent: string;
+    competent: string;
+    developing: string;
+    missing: string;
+  };
+}
+
+export interface ProjectReviewContext {
+  title: string;
+  description: string;
+  acceptanceCriteria: string[];
+  rubric: ProjectRubricCriterion[];
+}
+
 export interface ReviewInput {
   code: string;
-  taskDescription?: string;
-  rubric?: string[];
-  acceptanceCriteria?: string[];
+  project: ProjectReviewContext;
 }
 
 export interface ReviewChecklistItem {
@@ -25,12 +43,36 @@ export interface ReviewChecklistItem {
   evidence?: string;
 }
 
+export type EvidenceStatus = "supported" | "unsupported" | "unverifiable";
+export type RubricLevel = "excellent" | "competent" | "developing" | "missing";
+
+export interface RubricReviewItem {
+  criterionId: string;
+  criterion: string;
+  weight: number;
+  level: RubricLevel;
+  score: number;
+  evidence: string[];
+  missingEvidence: string[];
+  nextStep: string;
+}
+
+export interface AcceptanceReviewItem {
+  criterion: string;
+  status: EvidenceStatus;
+  evidence: string[];
+  nextStep: string;
+}
+
 export interface ReviewResult {
   score: number; // 0-100
   summary: string;
   checklist: ReviewChecklistItem[];
   suggestions: string[];
   provider: string;
+  rubricResults?: RubricReviewItem[];
+  acceptanceResults?: AcceptanceReviewItem[];
+  capabilityNote?: string;
 }
 
 export interface ChoiceLabInput {

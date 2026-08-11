@@ -1,13 +1,18 @@
 import { NextRequest } from "next/server";
 import { eq, desc, and } from "drizzle-orm";
 import { getSessionUser } from "@/server/auth/session";
-import { appDb } from "@/server/review/service";
+import { appDb, parseProjectRubric as parseValidatedProjectRubric, reviewProjectEvidence } from "@/server/review/service";
 import { courses, stageProjects, projectAttempts, reviewFeedbacks, learningRecords } from "@/server/db/schema";
 import { parseJsonArray, parseStringArray } from "@/server/ai/json";
 import { ok, fail } from "@/lib/api";
+import type { ProjectDetail, ProjectRubricCriterion } from "@/types";
+
+function parseProjectRubric(raw: string): ProjectRubricCriterion[] {
+  return parseValidatedProjectRubric(raw) ?? [];
+}
 
 // GET /api/project/[slug]
-// 返回阶段项目详情：tasks、acceptanceCriteria、当前用户最近 attempt 与对应 feedback。
+// 返回阶段项目详情、结构化教学契约，以及当前用户最近 attempt 与对应 feedback。
 export async function GET(req: NextRequest, ctx: { params: Promise<{ slug: string }> }) {
   const { slug } = await ctx.params;
   if (!slug?.trim() || slug.length > 200) return fail("项目标识无效", 400);
@@ -34,12 +39,21 @@ export async function GET(req: NextRequest, ctx: { params: Promise<{ slug: strin
       .orderBy(desc(reviewFeedbacks.createdAt))
       .get();
     if (fb) {
+      const evidenceReview = reviewProjectEvidence(latestAttempt.code, {
+        title: project.title,
+        description: project.description,
+        acceptanceCriteria: parseStringArray(project.acceptanceCriteria),
+        rubric: parseProjectRubric(project.rubric),
+      });
       feedback = {
         provider: fb.provider,
         score: fb.score,
         summary: fb.summary,
         checklist: parseJsonArray(fb.checklist),
         suggestions: parseStringArray(fb.suggestions),
+        rubricResults: evidenceReview.rubricResults,
+        acceptanceResults: evidenceReview.acceptanceResults,
+        capabilityNote: evidenceReview.capabilityNote,
         attempt: {
           id: latestAttempt.id,
           status: latestAttempt.status,
@@ -61,6 +75,13 @@ export async function GET(req: NextRequest, ctx: { params: Promise<{ slug: strin
     .where(and(eq(learningRecords.userId, user.id), eq(learningRecords.contentId, legacyContentId), eq(learningRecords.contentType, "project")))
     .get();
 
+  const teachingContract = {
+    guideMarkdown: project.guideMarkdown,
+    deliverables: parseStringArray(project.deliverables),
+    rubric: parseProjectRubric(project.rubric),
+    reflectionQuestions: parseStringArray(project.reflectionQuestions),
+  } satisfies Pick<ProjectDetail, "guideMarkdown" | "deliverables" | "rubric" | "reflectionQuestions">;
+
   return ok({
     id: project.id,
     slug: project.slug,
@@ -69,6 +90,7 @@ export async function GET(req: NextRequest, ctx: { params: Promise<{ slug: strin
     orderIndex: project.orderIndex,
     tasks: parseStringArray(project.tasks),
     acceptanceCriteria: parseStringArray(project.acceptanceCriteria),
+    ...teachingContract,
     courseSlug: course?.slug ?? "",
     courseTitle: course?.title ?? "",
     status: learning?.status ?? "not_started",

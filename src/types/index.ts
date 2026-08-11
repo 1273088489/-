@@ -113,9 +113,29 @@ export interface ExerciseResult {
   feedback: string;
   mastery: Mastery;
   status?: LearningStatus;
+  rubricResults?: Array<{
+    criterion: string;
+    evidenceStatus: "supported" | "unsupported";
+    evidence: string[];
+    missingEvidence: string[];
+    nextStep: string;
+  }>;
 }
 
 // —— 项目 ——
+export interface ProjectRubricCriterion {
+  id: string;
+  criterion: string;
+  weight: number;
+  evidence: string[];
+  levels: {
+    excellent: string;
+    competent: string;
+    developing: string;
+    missing: string;
+  };
+}
+
 export interface ProjectDetail {
   slug: string;
   title: string;
@@ -123,6 +143,10 @@ export interface ProjectDetail {
   orderIndex: number;
   tasks: string[];
   acceptanceCriteria: string[];
+  guideMarkdown: string;
+  deliverables: string[];
+  rubric: ProjectRubricCriterion[];
+  reflectionQuestions: string[];
   courseSlug?: string;
   courseTitle?: string;
   status?: LearningStatus;
@@ -150,6 +174,9 @@ export interface ReviewResult {
   checklist: ReviewChecklistItem[];
   suggestions: string[];
   provider: string;
+  rubricResults?: Array<{ criterionId: string; criterion: string; weight: number; level: "excellent" | "competent" | "developing" | "missing"; score: number; evidence: string[]; missingEvidence: string[]; nextStep: string }>;
+  acceptanceResults?: Array<{ criterion: string; status: "supported" | "unsupported" | "unverifiable"; evidence: string[]; nextStep: string }>;
+  capabilityNote?: string;
   attempt?: {
     id: string;
     status: string;
