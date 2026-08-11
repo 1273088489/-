@@ -7,6 +7,7 @@ const databasePath = path.resolve(import.meta.dirname, "test-results/e2e/quanzha
 
 export default defineConfig({
   testDir: "./tests/e2e",
+  timeout: 90_000,
   fullyParallel: false,
   forbidOnly: Boolean(process.env.CI),
   retries: process.env.CI ? 2 : 0,
@@ -25,7 +26,7 @@ export default defineConfig({
     },
   ],
   webServer: {
-    command: `npm run dev -- --hostname 127.0.0.1 --port ${port}`,
+    command: `npm run dev -- --webpack --hostname 127.0.0.1 --port ${port}`,
     env: {
       ...process.env,
       AI_PROVIDER: "mock",

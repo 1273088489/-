@@ -53,6 +53,12 @@
 - orderIndex: int
 - tasks: text (json array)
 - acceptanceCriteria: text (json array)
+- guideMarkdown: text
+- deliverables: text (json string array)
+- rubric: text (json `ProjectRubricCriterion[]`)
+- reflectionQuestions: text (json string array)
+
+`ProjectRubricCriterion` 包含项目内唯一的 `id`、评分维度 `criterion`、正整数权重 `weight`、证据列表 `evidence`，以及固定的 `excellent`、`competent`、`developing`、`missing` 四级描述。单个项目的 rubric 权重总和为 100。
 
 ### LearningRecord
 - id: text pk
@@ -104,7 +110,7 @@
 - POST `/api/lesson/[slug]/complete` {mastery}
 - GET  `/api/exercise/[id]` -> exercise
 - POST `/api/exercise/[id]/submit` {answer} -> judgement/feedback
-- GET  `/api/project/[slug]` -> project detail + tasks
+- GET  `/api/project/[slug]` -> project detail + tasks + acceptanceCriteria + guideMarkdown + deliverables + rubric + reflectionQuestions
 - POST `/api/project/[slug]/submit` {code} -> AI review feedback
 - POST `/api/ai/coach` {contextId, question, mode} -> coach answer (levels)
 - POST `/api/ai/review` {attemptId} -> run reviewer

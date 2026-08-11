@@ -5,7 +5,7 @@ import { useParams } from "next/navigation";
 import { useCallback, useEffect, useState } from "react";
 import { EmptyView, ErrorView, LoadingView, ProgressBar } from "@/components";
 import { ApiError, apiProject, apiSubmitProject } from "@/lib/client/api";
-import { demoProject, mockReviewForProject } from "@/lib/demoData";
+import Markdown from "@/components/Markdown";
 import type { ProjectDetail, ReviewResult, ReviewSeverity } from "@/types";
 
 const SEVERITY_META: Record<ReviewSeverity, { label: string; cls: string }> = {
@@ -19,7 +19,6 @@ export default function ProjectPage() {
   const [project, setProject] = useState<ProjectDetail | null>(null);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
-  const [usingDemo, setUsingDemo] = useState(false);
   const [code, setCode] = useState("");
   const [review, setReview] = useState<ReviewResult | null>(null);
   const [submitting, setSubmitting] = useState(false);
@@ -34,12 +33,9 @@ export default function ProjectPage() {
       setProject(data);
       setCode(data.latestAttempt?.code ?? "");
       setReview(data.feedback ?? null);
-      setUsingDemo(false);
     } catch (err) {
-      const fallback = demoProject(slug);
-      setProject(fallback);
-      setUsingDemo(Boolean(fallback));
-      if (!fallback) setError(err instanceof ApiError ? err.message : "项目加载失败");
+      setProject(null);
+      setError(err instanceof ApiError ? err.message : "项目加载失败");
     } finally {
       setLoading(false);
     }
@@ -58,7 +54,7 @@ export default function ProjectPage() {
     setSubmitting(true);
     setSubmitError(null);
     try {
-      setReview(usingDemo ? mockReviewForProject(project.slug, code) : await apiSubmitProject(project.slug, code));
+      setReview(await apiSubmitProject(project.slug, code));
     } catch (err) {
       setSubmitError(err instanceof ApiError ? err.message : "项目提交失败，请稍后重试。");
     } finally {
@@ -74,7 +70,6 @@ export default function ProjectPage() {
     <PageShell>
       <div className="flex flex-wrap items-center justify-between gap-3">
         <Link href={project.courseSlug ? `/course/${project.courseSlug}` : "/dashboard"} className="text-sm font-medium text-indigo-600 hover:text-indigo-700">← {project.courseTitle ?? "返回课程"}</Link>
-        {usingDemo ? <span className="rounded-full border border-amber-200 bg-amber-50 px-3 py-1 text-xs font-medium text-amber-800">演示项目</span> : null}
       </div>
 
       <header className="mt-6 border-b border-gray-200 pb-8">
@@ -97,8 +92,12 @@ export default function ProjectPage() {
         </form>
 
         <aside className="space-y-6">
+          <section className="border-t border-gray-200 pt-5"><h2 className="text-base font-semibold text-gray-950">项目指南</h2><Markdown source={project.guideMarkdown} className="mt-3" /></section>
+          <Checklist title="交付物" items={project.deliverables} />
           <Checklist title="任务清单" items={project.tasks} numbered />
           <Checklist title="验收标准" items={project.acceptanceCriteria} />
+          <RubricPanel rubric={project.rubric} />
+          <Checklist title="复盘问题" items={project.reflectionQuestions} />
         </aside>
       </div>
 
@@ -125,6 +124,9 @@ function ReviewPanel({ review }: { review: ReviewResult }) {
         <span className="text-xs text-gray-500">评审来源：{review.provider}</span>
       </div>
       <p className="mt-4 max-w-4xl text-sm leading-7 text-gray-700">{review.summary}</p>
+      {review.capabilityNote ? <p className="mt-3 rounded-lg bg-slate-50 px-4 py-3 text-xs leading-5 text-slate-700">{review.capabilityNote}</p> : null}
+      {review.rubricResults?.length ? <div className="mt-6"><h3 className="text-sm font-semibold text-gray-900">Rubric 逐项反馈</h3><div className="mt-3 space-y-2">{review.rubricResults.map((item) => <div key={item.criterionId} className="rounded-lg border border-gray-200 p-3 text-sm"><p className="font-medium">{item.criterion} · {item.level} · {item.score} 分</p><p className="mt-1 text-xs text-gray-600">已有证据：{item.evidence.join("、") || "无"}；缺失证据：{item.missingEvidence.join("、") || "无"}；下一步：{item.nextStep}</p></div>)}</div></div> : null}
+      {review.acceptanceResults?.length ? <div className="mt-6"><h3 className="text-sm font-semibold text-gray-900">验收证据状态</h3><div className="mt-3 space-y-2">{review.acceptanceResults.map((item) => <div key={item.criterion} className="rounded-lg border border-gray-200 p-3 text-sm"><p className="font-medium">{item.criterion} · {item.status === "supported" ? "有证据支持" : item.status === "unsupported" ? "无证据支持" : "当前无法验证"}</p><p className="mt-1 text-xs text-gray-600">证据：{item.evidence.join("、") || "无"}；下一步：{item.nextStep}</p></div>)}</div></div> : null}
       <div className="mt-6 space-y-3">
         {review.checklist.map((item, index) => {
           const meta = SEVERITY_META[item.severity] ?? SEVERITY_META.suggestion;
@@ -135,6 +137,8 @@ function ReviewPanel({ review }: { review: ReviewResult }) {
     </section>
   );
 }
+
+function RubricPanel({ rubric }: { rubric: ProjectDetail["rubric"] }) { return <section className="border-t border-gray-200 pt-5"><h2 className="text-base font-semibold text-gray-950">评分 Rubric</h2><div className="mt-3 space-y-3">{rubric.map((item) => <div key={item.id} className="rounded-lg border border-gray-200 p-3 text-sm"><p className="font-medium">{item.criterion} · 权重 {item.weight}%</p><p className="mt-1 text-xs text-gray-600">证据：{item.evidence.join("、")}</p><ul className="mt-2 space-y-1 text-xs text-gray-600"><li>优秀：{item.levels.excellent}</li><li>胜任：{item.levels.competent}</li><li>发展中：{item.levels.developing}</li><li>缺失：{item.levels.missing}</li></ul></div>)}</div></section>; }
 
 function PageShell({ children }: { children: React.ReactNode }) {
   return <div className="mx-auto max-w-6xl px-4 py-10 sm:px-6">{children}</div>;

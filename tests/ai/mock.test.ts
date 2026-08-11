@@ -2,6 +2,18 @@ import { describe, expect, it } from "vitest";
 import { MockAiProvider } from "@/server/ai/mock";
 
 const provider = new MockAiProvider();
+const project = {
+  title: "测试项目",
+  description: "测试描述",
+  acceptanceCriteria: [],
+  rubric: [{
+    id: "implementation",
+    criterion: "实现证据",
+    weight: 100,
+    evidence: ["function"],
+    levels: { excellent: "完整", competent: "核心", developing: "尝试", missing: "无" },
+  }],
+};
 
 describe("MockAiProvider.coach 提示级别", () => {
   it.each([1, 2, 3])("level %i 返回 hint 模式", async (level) => {
@@ -30,7 +42,7 @@ describe("MockAiProvider.review 缺陷识别", () => {
     const code = `const db = new Database("quanzhan.db");
 const password = "hunter2";
 db.exec(\`CREATE TABLE ...\`);`;
-    const result = await provider.review({ code });
+    const result = await provider.review({ code, project });
     expect(result.provider).toBe("mock");
     const blocker = result.checklist.find((c) => c.severity === "blocker");
     expect(blocker).toBeDefined();
@@ -45,14 +57,14 @@ db.exec(\`CREATE TABLE ...\`);`;
   }
 }
 const x = 1;`;
-    const result = await provider.review({ code });
+    const result = await provider.review({ code, project });
     const suggestion = result.checklist.find((c) => c.severity === "suggestion" && /try/i.test(c.message));
     expect(suggestion).toBeDefined();
     expect(result.checklist.some((c) => c.severity === "blocker")).toBe(false);
   });
 
   it("代码过短时记为 nit 且不误报 blocker", async () => {
-    const result = await provider.review({ code: "const a=1;" });
+    const result = await provider.review({ code: "const a=1;", project });
     expect(result.checklist.some((c) => c.severity === "nit")).toBe(true);
     expect(result.checklist.some((c) => c.severity === "blocker")).toBe(false);
   });

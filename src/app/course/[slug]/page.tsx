@@ -4,8 +4,7 @@ import Link from "next/link";
 import { useParams } from "next/navigation";
 import { useCallback, useEffect, useState } from "react";
 import { ApiError, apiCourseDetail } from "@/lib/client/api";
-import { demoCourseFallback } from "@/lib/demoData";
-import { Card, EmptyView, ErrorView, LoadingView, ProgressBar } from "@/components";
+import { EmptyView, ErrorView, LoadingView, ProgressBar } from "@/components";
 import type { CourseDetail, LearningStatus, ProjectSummary } from "@/types";
 
 const STATUS_META: Record<LearningStatus, { label: string; cls: string }> = {
@@ -22,7 +21,6 @@ export default function CourseDetailPage() {
   const [course, setCourse] = useState<CourseDetail | null>(null);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
-  const [usingDemo, setUsingDemo] = useState(false);
 
   const load = useCallback(async () => {
     if (!slug) return;
@@ -31,30 +29,9 @@ export default function CourseDetailPage() {
     try {
       const data = await apiCourseDetail(slug);
       setCourse(data);
-      setUsingDemo(false);
     } catch (err) {
       setError(err instanceof ApiError ? err.message : "课程加载失败");
-      const fallback = demoCourseFallback();
-      setCourse({
-        slug,
-        title: fallback.courses[0]?.title ?? "课程",
-        description: fallback.courses[0]?.description ?? "",
-        orderIndex: 0,
-        progress: 0,
-        lessons: [
-          { slug: "s1-dev-environment", title: "阶段 1：开发环境、终端与 Git", orderIndex: 0, requiresPass: true, status: "not_started", mastery: 0 },
-          { slug: "s2-vanilla-js", title: "阶段 2：用原生 JS 做一个能用的任务看板", orderIndex: 1, requiresPass: true, status: "not_started", mastery: 0 },
-          { slug: "s3-react", title: "阶段 3：用 React 重写看板", orderIndex: 2, requiresPass: true, status: "not_started", mastery: 0 },
-          { slug: "s4-node-postgres", title: "阶段 4：Node/Express API + PostgreSQL 持久化", orderIndex: 3, requiresPass: true, status: "not_started", mastery: 0 },
-        ],
-        projects: [
-          { slug: "p1-static-page", title: "项目 1：发布你的静态个人主页", description: "走通写代码→提交→上线最小闭环", orderIndex: 0, status: "not_started", mastery: 0 },
-          { slug: "p2-vanilla-board", title: "项目 2：原生 JS 任务看板", description: "localStorage 持久化的任务看板", orderIndex: 1, status: "not_started", mastery: 0 },
-          { slug: "p3-react-board", title: "项目 3：React 版任务看板", description: "组件化 + 状态提升 + 单测", orderIndex: 2, status: "not_started", mastery: 0 },
-          { slug: "p4-fullstack-board", title: "项目 4：全栈工单系统", description: "React + Express + PostgreSQL 完整 CRUD", orderIndex: 3, status: "not_started", mastery: 0 },
-        ],
-      });
-      setUsingDemo(true);
+      setCourse(null);
     } finally {
       setLoading(false);
     }
@@ -104,9 +81,6 @@ export default function CourseDetailPage() {
           </div>
           <div className="w-full max-w-xs">
             <ProgressBar value={course.progress ?? 0} showLabel label="课程进度" />
-            {usingDemo ? (
-              <p className="mt-3 rounded-lg bg-amber-50 px-3 py-2 text-xs text-amber-700">当前展示演示数据，GET /api/course/[slug] 就绪后自动切换。</p>
-            ) : null}
           </div>
         </div>
       </div>

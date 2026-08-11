@@ -5,7 +5,6 @@ import { useParams } from "next/navigation";
 import { useCallback, useEffect, useState } from "react";
 import { EmptyView, ErrorView, LoadingView, ProgressBar } from "@/components";
 import { ApiError, apiExercise, apiSubmitExercise } from "@/lib/client/api";
-import { demoExercise, gradeDemoExercise } from "@/lib/demoData";
 import type { ExerciseDetail, ExerciseResult } from "@/types";
 
 export default function ExercisePage() {
@@ -13,7 +12,6 @@ export default function ExercisePage() {
   const [exercise, setExercise] = useState<ExerciseDetail | null>(null);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
-  const [usingDemo, setUsingDemo] = useState(false);
   const [answer, setAnswer] = useState("");
   const [submitting, setSubmitting] = useState(false);
   const [result, setResult] = useState<ExerciseResult | null>(null);
@@ -27,12 +25,9 @@ export default function ExercisePage() {
     setResult(null);
     try {
       setExercise(await apiExercise(id));
-      setUsingDemo(false);
     } catch (err) {
-      const fallback = demoExercise(id);
-      setExercise(fallback);
-      setUsingDemo(Boolean(fallback));
-      if (!fallback) setError(err instanceof ApiError ? err.message : "练习加载失败");
+      setExercise(null);
+      setError(err instanceof ApiError ? err.message : "练习加载失败");
     } finally {
       setLoading(false);
     }
@@ -52,7 +47,7 @@ export default function ExercisePage() {
     setSubmitError(null);
     setResult(null);
     try {
-      const next = usingDemo ? gradeDemoExercise(exercise, answer) : await apiSubmitExercise(exercise.id, answer);
+      const next = await apiSubmitExercise(exercise.id, answer);
       setResult(next);
     } catch (err) {
       setSubmitError(err instanceof ApiError ? err.message : "答案提交失败，请稍后重试。");
@@ -73,7 +68,6 @@ export default function ExercisePage() {
     <PageShell>
       <div className="flex flex-wrap items-center justify-between gap-3">
         <Link href={`/lesson/${exercise.lessonSlug}`} className="text-sm font-medium text-indigo-600 hover:text-indigo-700">← {exercise.lessonTitle}</Link>
-        {usingDemo ? <span className="rounded-full border border-amber-200 bg-amber-50 px-3 py-1 text-xs font-medium text-amber-800">演示练习</span> : null}
       </div>
 
       <section className="mt-6 rounded-2xl border border-gray-200 bg-white p-6 shadow-sm sm:p-8">
@@ -86,7 +80,8 @@ export default function ExercisePage() {
         </div>
         <ProgressBar value={exercise.mastery ?? 0} className="mt-5" />
 
-        <form onSubmit={handleSubmit} className="mt-8">
+       <form onSubmit={handleSubmit} className="mt-8">
+          <section className="mb-6 rounded-lg border border-indigo-100 bg-indigo-50 p-4"><h2 className="text-sm font-semibold text-indigo-900">提交前标准</h2><ul className="mt-2 list-disc space-y-1 pl-5 text-sm text-indigo-900/80">{exercise.rubric.map((item) => <li key={item}>{item}</li>)}</ul><p className="mt-3 text-xs leading-5 text-indigo-900/70">文本题和代码题使用形成性启发式；系统未运行代码，也没有隐藏测试。</p></section>
           {exercise.answerType === "choices" ? (
             <fieldset className="space-y-3">
               <legend className="mb-3 text-sm font-semibold text-gray-800">选择一个答案</legend>
@@ -131,7 +126,7 @@ export default function ExercisePage() {
             <span className="text-sm font-semibold text-gray-700">掌握度 {result.mastery}%</span>
           </div>
           <p className="mt-3 text-sm leading-6 text-gray-700">{result.feedback}</p>
-          {!result.correct && exercise.rubric.length > 0 ? <div className="mt-4"><p className="text-sm font-semibold text-gray-800">自查标准</p><ul className="mt-2 list-disc space-y-1 pl-5 text-sm text-gray-700">{exercise.rubric.map((item) => <li key={item}>{item}</li>)}</ul></div> : null}
+          {result.rubricResults?.length ? <div className="mt-4"><p className="text-sm font-semibold text-gray-800">逐项形成性反馈</p><div className="mt-2 space-y-2">{result.rubricResults.map((item) => <div key={item.criterion} className="rounded-lg border border-gray-200 p-3 text-xs"><p className="font-medium">{item.criterion} · {item.evidenceStatus === "supported" ? "已有证据" : "缺失证据"}</p><p className="mt-1 text-gray-600">已有：{item.evidence.join("、") || "无"}；缺失：{item.missingEvidence.join("、") || "无"}；下一步：{item.nextStep}</p></div>)}</div></div> : null}
         </section>
       ) : null}
     </PageShell>

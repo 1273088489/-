@@ -12,6 +12,7 @@ import type {
   LessonDetail,
   ProgressOverview,
   ProjectDetail,
+  ProjectRubricCriterion,
   ReviewResult,
   Session,
   User,
@@ -85,6 +86,25 @@ function asArray(value: unknown): any[] {
   return Array.isArray(value) ? value : [];
 }
 
+function projectRubric(value: unknown): ProjectRubricCriterion[] {
+  return asArray(value).map((value) => {
+    const criterion = asRecord(value);
+    const levels = asRecord(criterion.levels);
+    return {
+      id: String(criterion.id ?? ""),
+      criterion: String(criterion.criterion ?? ""),
+      weight: Number(criterion.weight ?? 0),
+      evidence: asArray(criterion.evidence).map(String),
+      levels: {
+        excellent: String(levels.excellent ?? ""),
+        competent: String(levels.competent ?? ""),
+        developing: String(levels.developing ?? ""),
+        missing: String(levels.missing ?? ""),
+      },
+    };
+  });
+}
+
 function progressValue(value: unknown): number {
   if (typeof value === "number") return value;
   const progress = asRecord(value);
@@ -140,6 +160,10 @@ export function apiProject(slug: string): Promise<ProjectDetail> {
       orderIndex: Number(project.orderIndex ?? 0),
       tasks: asArray(project.tasks).map(String),
       acceptanceCriteria: asArray(project.acceptanceCriteria).map(String),
+      guideMarkdown: String(project.guideMarkdown ?? ""),
+      deliverables: asArray(project.deliverables).map(String),
+      rubric: projectRubric(project.rubric),
+      reflectionQuestions: asArray(project.reflectionQuestions).map(String),
       status: project.status ?? "not_started",
       mastery: Number(project.mastery ?? 0),
       latestAttempt: project.latestAttempt ?? null,
@@ -150,6 +174,9 @@ export function apiProject(slug: string): Promise<ProjectDetail> {
             checklist: asArray(feedback.checklist),
             suggestions: asArray(feedback.suggestions).map(String),
             provider: String(feedback.provider ?? "unknown"),
+            rubricResults: asArray(feedback.rubricResults),
+            acceptanceResults: asArray(feedback.acceptanceResults),
+            capabilityNote: typeof feedback.capabilityNote === "string" ? feedback.capabilityNote : undefined,
           }
         : null,
     } as ProjectDetail;

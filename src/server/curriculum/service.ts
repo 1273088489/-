@@ -47,6 +47,8 @@ export async function seedCurriculum() {
       const vals = {
         courseId, slug: p.slug, title: p.title, description: p.description,
         orderIndex: p.orderIndex, tasks: JSON.stringify(p.tasks), acceptanceCriteria: JSON.stringify(p.acceptanceCriteria),
+        guideMarkdown: p.guideMarkdown, deliverables: JSON.stringify(p.deliverables),
+        rubric: JSON.stringify(p.rubric), reflectionQuestions: JSON.stringify(p.reflectionQuestions),
       };
       if (existing) {
         await db.update(stageProjects).set(vals).where(eq(stageProjects.slug, p.slug)).run();

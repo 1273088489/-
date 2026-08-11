@@ -89,6 +89,10 @@ export const stageProjects = sqliteTable("stage_project", {
   orderIndex: integer("order_index").notNull().default(0),
   tasks: text("tasks").notNull().default("[]"), // JSON array
   acceptanceCriteria: text("acceptance_criteria").notNull().default("[]"), // JSON array
+  guideMarkdown: text("guide_markdown").notNull().default(""),
+  deliverables: text("deliverables").notNull().default("[]"), // JSON string[]
+  rubric: text("rubric").notNull().default("[]"), // JSON ProjectRubricCriterion[]
+  reflectionQuestions: text("reflection_questions").notNull().default("[]"), // JSON string[]
   ...timestamps,
 });
 

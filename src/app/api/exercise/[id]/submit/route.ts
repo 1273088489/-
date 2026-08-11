@@ -4,6 +4,7 @@ import { and, eq } from "drizzle-orm";
 import { db } from "@/server/curriculum/service";
 import { exercises, learningRecords } from "@/server/db/schema";
 import { getSessionUser } from "@/server/auth/session";
+import { matchExplicitEvidence } from "@/server/review/evidence";
 import { ok, fail, parseBody } from "@/lib/api";
 
 export const dynamic = "force-dynamic";
@@ -43,6 +44,7 @@ export async function POST(req: NextRequest, { params }: Params) {
   if ("error" in parsed) return parsed.error;
   const rawAnswer = parsed.data.answer;
   const answer = normalizeAnswer(rawAnswer);
+  const rubric = parseJsonArray(exercise.rubric);
 
   // ------------------------------------------------------------------
   // 判断答案对错
@@ -113,7 +115,22 @@ export async function POST(req: NextRequest, { params }: Params) {
       .run();
   }
 
-  // 反馈文案（不会透露 solution，只在答错时给提示方向）
+  const normalizedAnswer = answer.toLocaleLowerCase();
+  const rubricResults = rubric.map((criterion) => {
+    const matched = matchExplicitEvidence(normalizedAnswer, criterion);
+    const supported = exercise.answerType === "choices" ? correct : matched.supported;
+    return {
+      criterion,
+      evidenceStatus: supported ? "supported" as const : "unsupported" as const,
+      evidence: exercise.answerType === "choices" && supported
+        ? ["所选答案与标准答案一致"]
+        : matched.evidence,
+      missingEvidence: supported ? [] : matched.missingEvidence,
+      nextStep: supported ? "保留该证据，并补充理由或边界说明。" : "补充能直接支持此标准的显式证据。",
+    };
+  });
+
+  // 反馈文案不会透露 solution，只报告提交文本对公开 rubric 的支持情况。
   let feedback: string;
   if (correct) {
     feedback = `回答正确！掌握度提升到 ${mastery}。`;
@@ -127,6 +144,7 @@ export async function POST(req: NextRequest, { params }: Params) {
     correct,
     feedback,
     mastery,
+    rubricResults,
   });
 }
 

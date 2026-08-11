@@ -12,7 +12,7 @@
 - **数据库**：本地优先 **SQLite（better-sqlite3）**，通过 Drizzle ORM 访问；保留 PostgreSQL 适配（pg + drizzle），提供 docker-compose 作为可选。
 - **AI**：AI 适配层，优先 OpenAI 兼容接口；无 key 时退化为本地规则 mock（可运行、可演示）。
 - **测试**：Vitest（单元）+ Playwright（E2E）。
-- **代码运行**：MVP 阶段不直接在服务器跑用户代码；练习以“对比答案/自评/AI 提示”为主，隐藏测试预置在课程内容中做自评。
+- **形成性评审**：MVP 阶段不直接在服务器运行用户代码；练习依据公开 rubric 提供自评和 AI 提示，没有隐藏测试。
 
 ## 目标目录结构
 ```

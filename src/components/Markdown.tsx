@@ -21,9 +21,10 @@ export default function Markdown({ source, className = "" }: { source: string; c
         }
         if (block.type === "code") {
           return (
-            <pre key={key} className="overflow-x-auto rounded-xl bg-gray-950 p-4 text-sm leading-6 text-gray-100">
-              <code>{block.content}</code>
-            </pre>
+            <div key={key} className="relative">
+              <button type="button" onClick={() => void navigator.clipboard.writeText(block.content ?? "")} className="absolute right-2 top-2 rounded-md border border-gray-700 bg-gray-900 px-2.5 py-1 text-xs font-medium text-gray-200 hover:bg-gray-800" aria-label="复制代码">复制</button>
+              <pre className="overflow-x-auto rounded-xl bg-gray-950 p-4 pr-20 text-sm leading-6 text-gray-100"><code>{block.content}</code></pre>
+            </div>
           );
         }
         if (block.type === "list") {

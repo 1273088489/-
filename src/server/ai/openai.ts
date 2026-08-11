@@ -1,6 +1,7 @@
 import OpenAI from "openai";
 import type { AiProvider, CoachParams, CoachResult, ReviewInput, ReviewResult, ChoiceLabInput, ChoiceLabResult } from "./types";
 import { AiProviderError, type AiOperation } from "./errors";
+import { reviewProjectEvidence } from "@/server/review/evidence";
 
 function parseJsonLoose<T>(raw: string, fallback: T): T {
   try {
@@ -50,6 +51,18 @@ function normalizeReview(value: unknown, provider: string): ReviewResult {
     suggestions: asStringArray(data.suggestions),
     provider,
   };
+}
+
+export function buildOpenAiReviewMessages(input: ReviewInput): Array<{ role: "system" | "user"; content: string }> {
+  const system = "你是形成性评审者。只评价提交文本中的显式证据，不得声称运行代码、执行测试、读取 Git 历史、访问仓库、打开 URL、验证部署或访问任何外部资源。按每个 rubric 维度和验收标准分别返回 JSON；验收状态只能是有证据支持、无证据支持、当前无法验证。rubric 等级只能是 excellent、competent、developing、missing，并按权重计算总分。";
+  const user = [
+    "项目：" + input.project.title,
+    "项目描述：" + input.project.description,
+    "Rubric：" + JSON.stringify(input.project.rubric),
+    "验收标准：" + JSON.stringify(input.project.acceptanceCriteria),
+    "提交文本：\n" + input.code,
+  ].join("\n");
+  return [{ role: "system", content: system }, { role: "user", content: user }];
 }
 
 /**
@@ -107,15 +120,10 @@ export class OpenAiProvider implements AiProvider {
   }
 
   async review(input: ReviewInput): Promise<ReviewResult> {
-    const system = `你是资深代码审查者。按 checklist 返回评分。只允许输出 JSON：{score, summary, checklist:[{severity,message,evidence}], suggestions:[string]}。severity 取 blocker|suggestion|nit。使用中文。`;
-    const user = [
-      `任务：${input.taskDescription ?? "通用代码评审"}`,
-      `评分标准（rubric）：${JSON.stringify(input.rubric ?? [])}`,
-      `验收标准：${JSON.stringify(input.acceptanceCriteria ?? [])}`,
-      `代码：\n\`\`\`\n${input.code}\n\`\`\``,
-    ].join("\n");
-    const text = await this.chat([{ role: "system", content: system }, { role: "user", content: user }], true, "代码评审");
-    return normalizeReview(parseJsonLoose<unknown>(text, {}), this.name);
+    const text = await this.chat(buildOpenAiReviewMessages(input), true, "代码评审");
+    const normalized = normalizeReview(parseJsonLoose<unknown>(text, {}), this.name);
+    const evidenceReview = reviewProjectEvidence(input.code, input.project);
+    return { ...normalized, ...evidenceReview, score: evidenceReview.score };
   }
 
   async evaluateChoice(input: ChoiceLabInput): Promise<ChoiceLabResult> {

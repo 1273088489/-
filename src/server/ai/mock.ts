@@ -1,4 +1,5 @@
 import type { AiProvider, CoachParams, CoachResult, ReviewInput, ReviewResult, ChoiceLabInput, ChoiceLabResult } from "./types";
+import { reviewProjectEvidence } from "@/server/review/evidence";
 
 function stripCommentsAndStrings(source: string): string {
   let result = "";
@@ -123,8 +124,17 @@ export class MockAiProvider implements AiProvider {
       suggestions.push("补充空输入与异常输入的单元测试。");
     }
 
-    const summary = `Mock 评审完成：发现 ${checklist.filter((c) => c.severity === "blocker").length} 个阻止项、${checklist.filter((c) => c.severity === "suggestion").length} 个建议、${checklist.filter((c) => c.severity === "nit").length} 个微调。${input.taskDescription ? `（任务：${input.taskDescription}）` : ""}`;
-    return { score, summary, checklist, suggestions, provider: this.name };
+    const evidenceReview = reviewProjectEvidence(code, input.project);
+    for (const item of evidenceReview.rubricResults ?? []) {
+      checklist.push({ severity: item.level === "developing" ? "suggestion" : "nit", message: `${item.criterion}：${item.level}`, evidence: item.evidence.length ? `已有证据：${item.evidence.join("、")}` : "无证据支持" });
+    }
+    for (const item of evidenceReview.acceptanceResults ?? []) {
+      const status = item.status === "supported" ? "有证据支持" : item.status === "unsupported" ? "无证据支持" : "当前无法验证";
+      checklist.push({ severity: item.status === "unsupported" ? "suggestion" : "nit", message: `${item.criterion}：${status}`, evidence: item.evidence.join("、") || "提交文本未提供证据" });
+    }
+    score = evidenceReview.score;
+    const summary = `Mock 形成性评审：按项目 rubric 得分 ${score}/100，并分别列出 rubric 与验收证据。`;
+    return { ...evidenceReview, score, summary, checklist, suggestions, provider: this.name };
   }
 
   async evaluateChoice(input: ChoiceLabInput): Promise<ChoiceLabResult> {
