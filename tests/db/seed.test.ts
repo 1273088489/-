@@ -60,10 +60,122 @@ describe("seedCurriculum", () => {
       });
       const firstCounts = countRows();
 
+      expect(firstCounts).toEqual({ courses: 1, lessons: 7, exercises: 15, projects: 4 });
+
       await seedCurriculum();
 
       expect(countRows()).toEqual(firstCounts);
       expect(db.select().from(courses).where(eq(courses.slug, "fullstack-ticket-system")).all()).toHaveLength(1);
+    });
+  });
+
+  it("refreshes stale lesson and exercise contracts without creating duplicates", async () => {
+    await withSeedDatabase(async ({ db, seedCurriculum }, { lessons, exercises }) => {
+      await seedCurriculum();
+      const lesson = db.select().from(lessons).where(eq(lessons.slug, "s1-dev-environment")).get();
+      const exercise = db.select().from(exercises).where(eq(exercises.slug, "s1-ex2-path")).get();
+      expect(lesson).toBeDefined();
+      expect(exercise).toBeDefined();
+
+      db.update(lessons)
+        .set({ title: "stale", contentMarkdown: "stale", requiresPass: false })
+        .where(eq(lessons.id, lesson!.id))
+        .run();
+      db.update(exercises)
+        .set({ prompt: "stale", hints: "[]", rubric: "[]", solution: "stale" })
+        .where(eq(exercises.id, exercise!.id))
+        .run();
+
+      await seedCurriculum();
+
+      expect(db.select().from(lessons).where(eq(lessons.slug, lesson!.slug)).get()).toMatchObject({
+        id: lesson!.id,
+        title: expect.not.stringMatching(/^stale$/),
+        contentMarkdown: expect.stringContaining("## 学习目标"),
+        requiresPass: true,
+      });
+      expect(db.select().from(exercises).where(eq(exercises.slug, exercise!.slug)).get()).toMatchObject({
+        id: exercise!.id,
+        prompt: expect.stringContaining("提交"),
+        hints: expect.not.stringMatching(/^\[\]$/),
+        rubric: expect.not.stringMatching(/^\[\]$/),
+        solution: expect.not.stringMatching(/^stale$/),
+      });
+      expect(db.select().from(lessons).all()).toHaveLength(7);
+      expect(db.select().from(exercises).all()).toHaveLength(15);
+    });
+  });
+
+  it("persists and refreshes the stage project teaching contract", async () => {
+    await withSeedDatabase(async ({ db, seedCurriculum }, { stageProjects }) => {
+      await seedCurriculum();
+      const readProject = (slug = "p1-static-page") =>
+        db.select().from(stageProjects).where(eq(stageProjects.slug, slug)).get();
+
+      expect(readProject()).toMatchObject({
+        guideMarkdown: expect.stringContaining("# 项目指南"),
+        deliverables: JSON.stringify(["静态项目说明页源码仓库", "最小 PRD 与需求基线", "包含本地运行说明的 README", "发布地址与提交记录"]),
+      });
+      expect(JSON.parse(readProject()!.rubric)).toHaveLength(3);
+      expect(JSON.parse(readProject()!.reflectionQuestions)).toHaveLength(2);
+      expect(readProject("p2-vanilla-board")?.guideMarkdown).toContain("旧 localStorage 数据迁移");
+      expect(JSON.parse(readProject("p2-vanilla-board")!.deliverables)).toContain("需求变更与编码前影响分析");
+      expect(readProject("p3-react-board")?.guideMarkdown).toContain("## ADR 模板");
+      expect(readProject("p4-fullstack-board")?.guideMarkdown).toContain("## Mermaid ER 图模板");
+      expect(JSON.parse(readProject("p4-fullstack-board")!.deliverables)).toEqual(expect.arrayContaining([
+        "OpenAPI 风格 API 契约",
+        "部署与回滚记录",
+      ]));
+
+      db.update(stageProjects)
+        .set({ guideMarkdown: "stale", deliverables: "[]", rubric: "[]", reflectionQuestions: "[]" })
+        .where(eq(stageProjects.slug, "p1-static-page"))
+        .run();
+      await seedCurriculum();
+
+      expect(readProject()).toMatchObject({
+        guideMarkdown: expect.stringContaining("# 项目指南"),
+        deliverables: JSON.stringify(["静态项目说明页源码仓库", "最小 PRD 与需求基线", "包含本地运行说明的 README", "发布地址与提交记录"]),
+      });
+      expect(JSON.parse(readProject()!.rubric)).toHaveLength(3);
+      expect(JSON.parse(readProject()!.reflectionQuestions)).toHaveLength(2);
+      expect(db.select().from(stageProjects).all()).toHaveLength(4);
+    });
+  });
+
+  it("persists the complete seven-lesson learning path and its exercises", async () => {
+    await withSeedDatabase(async ({ db, seedCurriculum }, { lessons, exercises }) => {
+      await seedCurriculum();
+
+      expect(
+        db
+          .select()
+          .from(lessons)
+          .all()
+          .sort((left, right) => left.orderIndex - right.orderIndex)
+          .map((lesson) => lesson.slug),
+      ).toEqual([
+        "s1-dev-environment",
+        "s2-vanilla-js",
+        "s3-react",
+        "s4-node-postgres",
+        "s4-auth-authorization",
+        "s4-testing-ci",
+        "s4-docker-deployment",
+      ]);
+      expect(db.select().from(exercises).all()).toHaveLength(15);
+
+      const authLesson = db.select().from(lessons).where(eq(lessons.slug, "s4-auth-authorization")).get();
+      expect(authLesson?.title).toContain("第四阶段第 2 课");
+      expect(authLesson?.contentMarkdown).toContain("## 常见错误与诊断");
+      expect(
+        db
+          .select()
+          .from(exercises)
+          .all()
+          .filter((exercise) => exercise.lessonId === authLesson?.id)
+          .map((exercise) => exercise.slug),
+      ).toEqual(["s4-auth-ex1-session-flow", "s4-auth-ex2-owner-guard"]);
     });
   });
 

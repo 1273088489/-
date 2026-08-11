@@ -1,5 +1,7 @@
 import Database from "better-sqlite3";
 import { drizzle } from "drizzle-orm/better-sqlite3";
+import fs from "node:fs";
+import path from "node:path";
 import { describe, expect, it } from "vitest";
 import { courses, exercises, lessons, stageProjects, users } from "@/server/db/schema";
 import { applyMigrations } from "../helpers/ddl";
@@ -15,6 +17,44 @@ function withMigratedDatabase(run: (database: Database.Database) => void): void 
 }
 
 describe("generated SQL migrations", () => {
+  it("upgrades existing projects with safe teaching-contract defaults", () => {
+    const database = new Database(":memory:");
+    const migrationsDirectory = path.resolve(import.meta.dirname, "../../drizzle");
+    const migrationFiles = fs
+      .readdirSync(migrationsDirectory)
+      .filter((file) => file.endsWith(".sql"))
+      .sort((left, right) => left.localeCompare(right));
+
+    try {
+      database.pragma("foreign_keys = ON");
+      database.exec(fs.readFileSync(path.join(migrationsDirectory, migrationFiles[0]), "utf8"));
+      database
+        .prepare(
+          "INSERT INTO course (id, slug, title, description, created_at, updated_at) VALUES (?, ?, ?, ?, ?, ?)",
+        )
+        .run("course-1", "fullstack-ticket-system", "全栈工单管理系统", "从零到上线", "2026-08-10", "2026-08-10");
+      database
+        .prepare(
+          "INSERT INTO stage_project (id, course_id, slug, title, description, created_at, updated_at) VALUES (?, ?, ?, ?, ?, ?, ?)",
+        )
+        .run("project-1", "course-1", "p1-static-page", "发布静态主页", "走通最小闭环", "2026-08-10", "2026-08-10");
+
+      for (const migrationFile of migrationFiles.slice(1)) {
+        database.exec(fs.readFileSync(path.join(migrationsDirectory, migrationFile), "utf8"));
+      }
+
+      expect(database.prepare("SELECT * FROM stage_project WHERE id = ?").get("project-1")).toMatchObject({
+        id: "project-1",
+        guide_markdown: "",
+        deliverables: "[]",
+        rubric: "[]",
+        reflection_questions: "[]",
+      });
+    } finally {
+      database.close();
+    }
+  });
+
   it("creates every MVP table and unique index", () => {
     withMigratedDatabase((database) => {
       const tables = database
@@ -83,7 +123,15 @@ describe("generated SQL migrations", () => {
       expect(course.orderIndex).toBe(0);
       expect(lesson).toMatchObject({ courseId: course.id, contentMarkdown: "", requiresPass: true });
       expect(exercise).toMatchObject({ lessonId: lesson.id, answerType: "text", hints: "[]" });
-      expect(project).toMatchObject({ courseId: course.id, tasks: "[]", orderIndex: 0 });
+      expect(project).toMatchObject({
+        courseId: course.id,
+        tasks: "[]",
+        guideMarkdown: "",
+        deliverables: "[]",
+        rubric: "[]",
+        reflectionQuestions: "[]",
+        orderIndex: 0,
+      });
     });
   });
 
