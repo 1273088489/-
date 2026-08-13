@@ -99,3 +99,60 @@ describe("MockAiProvider.evaluateChoice 区分 rationale", () => {
     expect(result.feedback).toMatch(/需求.*团队.*成本/);
   });
 });
+
+describe("MockAiProvider.review 证据化评分（P2-05）", () => {
+  const projectWithEvidence = {
+    title: "工单系统",
+    description: "仓库提交",
+    acceptanceCriteria: ["提交中包含一个以 http:// 或 https:// 开头的发布地址", "README 包含本地运行命令"],
+    rubric: [{
+      id: "implementation",
+      criterion: "实现与项目任务一致",
+      weight: 40,
+      evidence: ["页面包含工单名称、目标用户"],
+      levels: { excellent: "完整", competent: "核心", developing: "尝试", missing: "无" },
+    }],
+  };
+
+  it("返回基于证据的 score/rubric/acceptance/evidenceFacts，capabilityNote 真实声明执行范围", async () => {
+    const result = await provider.review({
+      code: "",
+      project: projectWithEvidence,
+      evidence: {
+        repository: {
+          sourceType: "url",
+          head: { branch: "main", shortHash: "abc", subject: "init" },
+          branches: [],
+          commits: [],
+          diff: { baseRef: "empty", filesChanged: 1, insertions: 1, deletions: 0, files: [{ path: "index.html", status: "added", insertions: 1, deletions: 0 }] },
+          tree: { fileCount: 1, totalBytes: 10, files: ["index.html"] },
+        },
+        testRuns: [
+          { key: "p1-public", name: "说明页包含名称、目标用户", kind: "public", passed: true, status: "passed", durationMs: 10, message: "OK", framework: "static-check" },
+          { key: "p1-hidden", name: "隐藏基线", kind: "hidden", passed: true, status: "passed", durationMs: 10, message: "OK", framework: "static-check" },
+        ],
+        runtime: { status: "success", errorCode: "", exitCode: 0, durationMs: 10, timedOut: false, oomKilled: false, message: "", phases: [] },
+        fileContents: [{ path: "index.html", content: "<h1>工单系统</h1><p>目标用户：客服</p>" }],
+      },
+    });
+
+    expect(result.score).toBeGreaterThan(0);
+    expect(result.rubricResults?.length).toBe(1);
+    expect(result.rubricResults?.[0].evidence.join(" ")).toContain("说明页包含名称、目标用户");
+    expect(result.evidenceFacts?.some((fact) => fact.sourceType === "test_output" && fact.internal === true)).toBe(true);
+    expect(result.capabilityNote).toContain("公开测试 1/1 通过");
+    expect(result.capabilityNote).toContain("沙箱主执行：成功");
+    expect(result.capabilityNote).toMatch(/未访问任何外部 URL、未验证部署地址/);
+    // 隐藏测试名称不进入任何面向学习者的字符串
+    expect(result.capabilityNote).not.toContain("隐藏基线");
+    expect(JSON.stringify(result.rubricResults)).not.toContain("隐藏基线");
+    // 部署 URL 类验收标准无证据 → unverifiable
+    expect(result.acceptanceResults?.[0].status).toBe("unverifiable");
+  });
+
+  it("code 为空且无证据时不臆造执行范围", async () => {
+    const result = await provider.review({ code: "", project: projectWithEvidence });
+    expect(result.capabilityNote).toMatch(/只分析提交文本/);
+    expect(result.capabilityNote).toMatch(/未运行代码/);
+  });
+});

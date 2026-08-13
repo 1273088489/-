@@ -12,3 +12,6 @@ test-results
 *.db-shm
 *.db-wal
 *.tsbuildinfo
+
+# 本地工作规划/会话日志（不提交）
+.scratch/

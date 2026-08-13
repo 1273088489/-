@@ -50,17 +50,18 @@ describe("seedCurriculum", () => {
   });
 
   it("is idempotent when run repeatedly", async () => {
-    await withSeedDatabase(async ({ db, seedCurriculum }, { courses, lessons, exercises, stageProjects }) => {
+    await withSeedDatabase(async ({ db, seedCurriculum }, { courses, lessons, exercises, stageProjects, testCases }) => {
       await seedCurriculum();
       const countRows = () => ({
         courses: db.select().from(courses).all().length,
         lessons: db.select().from(lessons).all().length,
         exercises: db.select().from(exercises).all().length,
         projects: db.select().from(stageProjects).all().length,
+        testCases: db.select().from(testCases).all().length,
       });
       const firstCounts = countRows();
 
-      expect(firstCounts).toEqual({ courses: 1, lessons: 7, exercises: 15, projects: 4 });
+      expect(firstCounts).toEqual({ courses: 1, lessons: 7, exercises: 15, projects: 4, testCases: 13 });
 
       await seedCurriculum();
 
@@ -176,6 +177,26 @@ describe("seedCurriculum", () => {
           .filter((exercise) => exercise.lessonId === authLesson?.id)
           .map((exercise) => exercise.slug),
       ).toEqual(["s4-auth-ex1-session-flow", "s4-auth-ex2-owner-guard"]);
+    });
+  });
+
+  it("seeds public and hidden test cases per project (P2-04) without exposing hidden defs", async () => {
+    await withSeedDatabase(async ({ db, seedCurriculum }, { testCases, stageProjects }) => {
+      await seedCurriculum();
+
+      const all = db.select().from(testCases).all();
+      expect(all).toHaveLength(13);
+      expect(all.filter((c) => c.kind === "public").length).toBeGreaterThan(0);
+      expect(all.filter((c) => c.kind === "hidden").length).toBeGreaterThan(0);
+
+      const p1 = db.select().from(stageProjects).where(eq(stageProjects.slug, "p1-static-page")).get()!;
+      const p1Cases = db.select().from(testCases).where(eq(testCases.projectId, p1.id)).all();
+      expect(p1Cases.map((c) => c.kind).sort()).toEqual(["hidden", "public"]);
+      expect(p1Cases.find((c) => c.kind === "hidden")!.files).toContain("ticket-prd");
+
+      // 幂等：重复 seed 不产生重复 test_case
+      await seedCurriculum();
+      expect(db.select().from(testCases).all()).toHaveLength(13);
     });
   });
 

@@ -4,7 +4,9 @@
   "private": true,
   "description": "AI 全栈项目教练 - 从零到完整项目的 AI 学习平台 MVP",
   "type": "module",
-  "engines": { "node": ">=20.0.0" },
+  "engines": {
+    "node": ">=20.0.0"
+  },
   "scripts": {
     "dev": "next dev",
     "build": "next build",
@@ -17,7 +19,9 @@
     "test": "vitest run",
     "test:watch": "vitest",
     "test:e2e": "playwright test",
-    "check": "npm run typecheck && npm run test && npm run build"
+    "check": "npm run typecheck && npm run test && npm run build",
+    "dev:quick": "node scripts/quickstart.mjs dev",
+    "start:quick": "node scripts/quickstart.mjs start"
   },
   "dependencies": {
     "better-sqlite3": "latest",

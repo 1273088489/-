@@ -150,7 +150,7 @@ describe("public curriculum API contract", () => {
       expectExactKeys(projectDetail, [
         "id", "slug", "title", "description", "orderIndex", "tasks", "acceptanceCriteria", "guideMarkdown",
         "deliverables", "rubric", "reflectionQuestions", "courseSlug", "courseTitle", "status", "mastery",
-        "latestAttempt", "feedback",
+        "latestAttempt", "latestRepository", "latestSandboxRun", "publicTests", "publicTestRuns", "feedback",
       ]);
       expect(projectDetail.slug).toBe("p1-static-page");
       expect(projectDetail.guideMarkdown).toContain("# 项目指南");

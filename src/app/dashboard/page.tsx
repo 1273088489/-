@@ -2,9 +2,9 @@
 
 import Link from "next/link";
 import { useCallback, useEffect, useState } from "react";
-import { ApiError, apiProgress } from "@/lib/client/api";
+import { ApiError, apiProgress, apiRemediationPaths } from "@/lib/client/api";
 import { Card, EmptyView, ErrorView, LoadingView, ProgressBar } from "@/components";
-import type { LearningStatus, ProgressOverview } from "@/types";
+import type { LearningStatus, ProgressOverview, RemediationPathRecord } from "@/types";
 
 const STATUS_LABELS: Record<LearningStatus, string> = {
   not_started: "未开始",
@@ -16,6 +16,7 @@ const STATUS_LABELS: Record<LearningStatus, string> = {
 /** 学习仪表盘：整体进度、最近活动、继续学习。 */
 export default function DashboardPage() {
   const [progress, setProgress] = useState<ProgressOverview | null>(null);
+  const [remediationPaths, setRemediationPaths] = useState<RemediationPathRecord[]>([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
 
@@ -25,6 +26,11 @@ export default function DashboardPage() {
     try {
       const data = await apiProgress();
       setProgress(data);
+      try {
+        setRemediationPaths(await apiRemediationPaths());
+      } catch {
+        setRemediationPaths([]);
+      }
     } catch (err) {
       setError(err instanceof ApiError ? err.message : "进度加载失败");
       setProgress(null);
@@ -87,6 +93,35 @@ export default function DashboardPage() {
           </div>
         ))}
       </div>
+
+      {remediationPaths.length > 0 ? (
+        <Card className="mt-8" title="个性化补课" subtitle="根据错误记录、失败测试与低分维度生成">
+          <div className="space-y-3">
+            {remediationPaths.map((path) => {
+              const completed = path.items.filter((item) => item.completed).length;
+              const active = path.status === "active";
+              return (
+                <div key={path.id} className="rounded-xl border border-amber-100 bg-amber-50/50 p-4">
+                  <div className="flex flex-wrap items-center justify-between gap-3">
+                    <div className="min-w-0">
+                      <p className="text-sm font-semibold text-gray-900">{path.projectTitle}</p>
+                      <p className="mt-0.5 text-xs text-gray-500">{path.summary}</p>
+                    </div>
+                    <span className={`shrink-0 rounded-full px-2.5 py-0.5 text-xs font-semibold ${active ? "bg-amber-100 text-amber-700" : "bg-emerald-100 text-emerald-700"}`}>
+                      {active ? "进行中" : "已完成"}
+                    </span>
+                  </div>
+                  <ProgressBar value={path.items.length === 0 ? 0 : Math.round((completed / path.items.length) * 100)} className="mt-3" />
+                  <div className="mt-1 text-xs text-gray-500">完成 {completed} / {path.items.length} 项</div>
+                  <Link href={`/project/${path.projectSlug}`} className="mt-3 inline-flex items-center gap-1 text-sm font-medium text-indigo-600 hover:text-indigo-700">
+                    查看补课路径 →
+                  </Link>
+                </div>
+              );
+            })}
+          </div>
+        </Card>
+      ) : null}
 
       <div className="mt-8 grid gap-6 lg:grid-cols-3">
         {/* 整体进度 + 继续学习 */}

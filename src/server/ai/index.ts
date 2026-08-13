@@ -20,4 +20,24 @@ export function resetAiProvider() {
 }
 
 export { MockAiProvider, OpenAiProvider };
-export type { AiProvider, CoachParams, CoachResult, ProjectReviewContext, ReviewInput, ReviewResult, ChoiceLabInput, ChoiceLabResult } from "./types";
+export type {
+  AiProvider,
+  CoachParams,
+  CoachResult,
+  ProjectReviewContext,
+  ReviewInput,
+  ReviewResult,
+  ChoiceLabInput,
+  ChoiceLabResult,
+  EvidenceFact,
+  EvidenceFactSourceType,
+  ReviewEvidenceInput,
+  ReviewEvidenceRepository,
+  ReviewEvidenceTestRun,
+  ReviewEvidenceRuntime,
+  ReviewEvidenceFileContent,
+  RubricLevel,
+  RubricReviewItem,
+  AcceptanceReviewItem,
+  EvidenceStatus,
+} from "./types";

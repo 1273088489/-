@@ -19,3 +19,18 @@ jobs:
       - run: npm run typecheck
       - run: npm run test
       - run: npm run build
+  e2e:
+    # P2-07：可选 Playwright 端到端（浏览器安装失败时允许继续，不阻塞核心验证）。
+    runs-on: ubuntu-latest
+    timeout-minutes: 20
+    if: ${{ !cancelled() }}
+    needs: verify
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 24
+          cache: npm
+      - run: npm ci
+      - run: npx playwright install --with-deps chromium
+      - run: npm run test:e2e

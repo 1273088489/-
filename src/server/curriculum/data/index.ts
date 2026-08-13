@@ -1,4 +1,5 @@
 import type { CourseDef, ProjectRubricCriterion } from "../types";
+import { PROJECT_TESTS } from "./tests";
 
 function createProjectRubric(evidence: {
   implementation: string;
@@ -1449,6 +1450,8 @@ CMD ["node", "dist/server.js"]
           verification: "PRD、README、发布地址与至少 2 个提交记录",
           decisionRecord: "PRD 中记录范围、验收标准和一个被放弃方案",
         }),
+        sandbox: { runtime: "static" },
+        ...PROJECT_TESTS["p1-static-page"],
         reflectionQuestions: [
           "解释一个关键设计决策以及你放弃的方案，为什么当前方案更适合这个项目？",
           "复盘一次实现或发布失败：你如何定位问题，下次会怎样迁移这套排查方法？",
@@ -1479,6 +1482,8 @@ CMD ["node", "dist/server.js"]
           verification: "影响分析、旧数据迁移及原有行为回归记录",
           decisionRecord: "影响分析中说明默认 medium、替代方案和回滚条件",
         }),
+        sandbox: { runtime: "static" },
+        ...PROJECT_TESTS["p2-vanilla-board"],
         reflectionQuestions: [
           "解释状态持久化的设计决策以及你放弃的方案，为什么选择当前边界？",
           "如果旧 localStorage 数据迁移失败，你会如何定位、恢复并避免再次发生？",
@@ -1509,6 +1514,8 @@ CMD ["node", "dist/server.js"]
           verification: "三档优先级行为、旧数据兼容和脚手架测试报告",
           decisionRecord: "ADR 记录组件边界、被放弃方案与可观察后果",
         }),
+        sandbox: { runtime: "node" },
+        ...PROJECT_TESTS["p3-react-board"],
         reflectionQuestions: [
           "解释组件边界的设计决策以及你放弃的方案，这个取舍带来了什么影响？",
           "复盘从原生 JavaScript 迁移到 React 时的一次失败，你会如何降低下一次迁移风险？",
@@ -1540,6 +1547,8 @@ CMD ["node", "dist/server.js"]
           verification: "迁移、CRUD、400、401、403、测试、CI 和部署记录",
           decisionRecord: "PRD、ER、API 契约与 ADR 记录替代方案和回滚条件",
         }),
+        sandbox: { runtime: "node" },
+        ...PROJECT_TESTS["p4-fullstack-board"],
         reflectionQuestions: [
           "解释数据库或 API 的关键设计决策以及你放弃的方案，证据如何支持当前选择？",
           "如果数据库迁移或全链路验证失败，你会怎样定位影响范围并安全恢复？",

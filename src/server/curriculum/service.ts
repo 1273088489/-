@@ -1,7 +1,8 @@
 import { sqlite } from "@/server/db/client";
 import { drizzle } from "drizzle-orm/better-sqlite3";
 import { eq, and } from "drizzle-orm";
-import { courses, lessons, exercises, stageProjects } from "@/server/db/schema";
+import { courses, lessons, exercises, stageProjects, testCases } from "@/server/db/schema";
+import type { ProjectTestCaseDef } from "@/server/tests/types";
 import { courses as courseDefs } from "@/server/curriculum/data";
 
 export const db = drizzle(sqlite);
@@ -44,16 +45,47 @@ export async function seedCurriculum() {
 
     for (const p of c.projects) {
       const existing = db.select().from(stageProjects).where(eq(stageProjects.slug, p.slug)).get();
+      let projectId: string;
       const vals = {
         courseId, slug: p.slug, title: p.title, description: p.description,
         orderIndex: p.orderIndex, tasks: JSON.stringify(p.tasks), acceptanceCriteria: JSON.stringify(p.acceptanceCriteria),
         guideMarkdown: p.guideMarkdown, deliverables: JSON.stringify(p.deliverables),
         rubric: JSON.stringify(p.rubric), reflectionQuestions: JSON.stringify(p.reflectionQuestions),
+        sandboxConfig: JSON.stringify(p.sandbox ?? {}),
       };
       if (existing) {
         await db.update(stageProjects).set(vals).where(eq(stageProjects.slug, p.slug)).run();
+        projectId = existing.id;
       } else {
-        await db.insert(stageProjects).values(vals).run();
+        projectId = (await db.insert(stageProjects).values(vals).returning())[0].id;
+      }
+
+      // P2-04：公开/隐藏测试定义（hidden 只落库，绝不进入公开 API/课程数据）。
+      const testDefs: Array<ProjectTestCaseDef & { kind: "public" | "hidden" }> = [
+        ...(p.publicTests ?? []).map((t) => ({ ...t, kind: "public" as const })),
+        ...(p.hiddenTests ?? []).map((t) => ({ ...t, kind: "hidden" as const })),
+      ];
+      for (const def of testDefs) {
+        const existingCase = db
+          .select()
+          .from(testCases)
+          .where(and(eq(testCases.projectId, projectId), eq(testCases.key, def.id)))
+          .get();
+        const caseVals = {
+          projectId,
+          key: def.id,
+          kind: def.kind,
+          name: def.name,
+          framework: def.framework,
+          files: JSON.stringify(def.files),
+          command: JSON.stringify(def.command ?? []),
+          orderIndex: def.orderIndex ?? 0,
+        };
+        if (existingCase) {
+          await db.update(testCases).set(caseVals).where(eq(testCases.id, existingCase.id)).run();
+        } else {
+          await db.insert(testCases).values(caseVals).run();
+        }
       }
     }
   }

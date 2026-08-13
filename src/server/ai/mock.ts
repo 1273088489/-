@@ -1,5 +1,6 @@
 import type { AiProvider, CoachParams, CoachResult, ReviewInput, ReviewResult, ChoiceLabInput, ChoiceLabResult } from "./types";
 import { reviewProjectEvidence } from "@/server/review/evidence";
+import { aggregateEvidenceScore } from "@/server/scoring/aggregator";
 
 function stripCommentsAndStrings(source: string): string {
   let result = "";
@@ -85,6 +86,29 @@ export class MockAiProvider implements AiProvider {
   }
 
   async review(input: ReviewInput): Promise<ReviewResult> {
+    // P2-05：仓库提交走证据化评分（真实采集的 diff/测试/运行时/文件内容）。
+    if (input.evidence) {
+      const evidenceReview = aggregateEvidenceScore({
+        project: input.project,
+        repository: input.evidence.repository,
+        testRuns: input.evidence.testRuns,
+        runtime: input.evidence.runtime,
+        fileContents: input.evidence.fileContents,
+      });
+      const checklist: ReviewResult["checklist"] = [];
+      const suggestions: string[] = [];
+      for (const item of evidenceReview.rubricResults) {
+        checklist.push({ severity: item.level === "missing" ? "suggestion" : "nit", message: `${item.criterion}：${item.level}`, evidence: item.evidence.length ? `已有证据：${item.evidence.join("、")}` : "无证据支持" });
+      }
+      for (const item of evidenceReview.acceptanceResults) {
+        const status = item.status === "supported" ? "有证据支持" : item.status === "unsupported" ? "无证据支持" : "当前无法验证";
+        checklist.push({ severity: item.status === "unsupported" ? "suggestion" : "nit", message: `${item.criterion}：${status}`, evidence: item.evidence.join("、") || "未采集到证据" });
+      }
+      const score = evidenceReview.score;
+      const summary = `Mock 证据化评审：综合仓库 diff、公开与隐藏测试、沙箱运行与文件内容证据，按项目 rubric 得分 ${score}/100。`;
+      return { ...evidenceReview, score, summary, checklist, suggestions, provider: this.name };
+    }
+
     const code = input.code ?? "";
     const checklist: ReviewResult["checklist"] = [];
     let score = 60;
