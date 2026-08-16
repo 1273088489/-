@@ -85,14 +85,16 @@ export default function LessonPage() {
   }
 
   return (
-    <div className="mx-auto max-w-4xl px-4 py-10 sm:px-6">
+    <div className="lg:pl-64">
+      <SectionNavigation source={lesson.contentMarkdown} />
+      <div className="mx-auto max-w-4xl px-4 py-10 sm:px-6">
       <div className="flex items-center justify-between gap-3">
         <Link href={`/course/${lesson.courseSlug ?? "#"}`} className="text-sm font-medium text-indigo-600 hover:text-indigo-700">
           ← {lesson.courseTitle ?? "返回课程"}
         </Link>
       </div>
 
-      <div className="mt-6 grid gap-6 lg:grid-cols-[minmax(0,1fr)_16rem]">
+      <div className="mt-6">
         <div className="rounded-2xl border border-gray-200 bg-white p-6 shadow-sm sm:p-8">
           <h1 className="text-2xl font-bold text-gray-900">{lesson.title}</h1>
           <p className="mt-2 text-sm text-gray-500">
@@ -102,7 +104,6 @@ export default function LessonPage() {
             <MarkdownWithTOC source={lesson.contentMarkdown} />
           </div>
         </div>
-        <SectionNavigation source={lesson.contentMarkdown} />
       </div>
 
       {/* 练习列表 */}
@@ -171,6 +172,7 @@ export default function LessonPage() {
           </Link>
         ) : null}
       </div>
+      </div>
     </div>
   );
 }
@@ -223,8 +225,8 @@ function SectionNavigation({ source }: { source: string }) {
   if (headings.length === 0) return null;
 
   return (
-    <nav className="hidden lg:block" aria-label="章节导航">
-      <div className="sticky top-24 rounded-xl border border-gray-200 bg-white p-4 shadow-sm">
+    <nav className="fixed left-0 top-24 z-10 hidden h-[calc(100vh-6rem)] w-64 border-r border-gray-200 bg-white lg:block" aria-label="章节导航">
+      <div className="h-full overflow-y-auto p-4">
         <p className="mb-3 text-xs font-semibold uppercase tracking-wider text-gray-500">本课目录</p>
         <ul className="space-y-1">
           {headings.map((h) => {
