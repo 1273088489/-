@@ -458,6 +458,24 @@ export function apiCompleteRemediationPath(id: string): Promise<RemediationPathR
   return request<unknown>(`/api/remediation/${encodeURIComponent(id)}/complete`, { method: "POST" }).then(remediationPathRecord);
 }
 
+// —— AI 教练 ——
+export interface AiCoachResult {
+  response: string;
+  level: number;
+  mode: "hint" | "solution";
+}
+
+export interface AiCoachParams {
+  question: string;
+  level: number;
+  context?: string;
+}
+
+/** 调用 AI 学习教练，获取分级提示或参考答案。 */
+export function apiAiCoach(params: AiCoachParams): Promise<AiCoachResult> {
+  return request<AiCoachResult>("/api/ai/coach", { method: "POST", body: params });
+}
+
 // —— 选型实验 ——
 export function apiChoiceScenarios(): Promise<ChoiceScenario[]> {
   return request<unknown>("/api/choicelab").then((data) =>

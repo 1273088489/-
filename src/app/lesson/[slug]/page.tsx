@@ -2,9 +2,11 @@
 
 import Link from "next/link";
 import { useParams } from "next/navigation";
-import { useCallback, useEffect, useState } from "react";
+import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { ApiError, apiLesson, apiCompleteLesson } from "@/lib/client/api";
 import { Card, EmptyView, ErrorView, LoadingView, Markdown } from "@/components";
+import { parseMarkdown } from "@/lib/markdown";
+import type { MarkdownBlock } from "@/lib/markdown";
 import type { LessonDetail } from "@/types";
 
 /** 课时页：渲染 markdown + 练习列表 + 完成按钮。 */
@@ -90,12 +92,17 @@ export default function LessonPage() {
         </Link>
       </div>
 
-      <div className="mt-6 rounded-2xl border border-gray-200 bg-white p-6 shadow-sm sm:p-8">
-        <h1 className="text-2xl font-bold text-gray-900">{lesson.title}</h1>
-        <p className="mt-2 text-sm text-gray-500">
-          第 {lesson.orderIndex + 1} 讲 · {lesson.requiresPass ? "必修" : "选学"} · 掌握度 {lesson.mastery ?? 0}%
-        </p>
-        <Markdown source={lesson.contentMarkdown} className="mt-6" />
+      <div className="mt-6 grid gap-6 lg:grid-cols-[minmax(0,1fr)_16rem]">
+        <div className="rounded-2xl border border-gray-200 bg-white p-6 shadow-sm sm:p-8">
+          <h1 className="text-2xl font-bold text-gray-900">{lesson.title}</h1>
+          <p className="mt-2 text-sm text-gray-500">
+            第 {lesson.orderIndex + 1} 讲 · {lesson.requiresPass ? "必修" : "选学"} · 掌握度 {lesson.mastery ?? 0}%
+          </p>
+          <div className="mt-6">
+            <MarkdownWithTOC source={lesson.contentMarkdown} />
+          </div>
+        </div>
+        <SectionNavigation source={lesson.contentMarkdown} />
       </div>
 
       {/* 练习列表 */}
@@ -179,4 +186,117 @@ function answerTypeLabel(t: string): string {
     default:
       return "练习";
   }
+}
+
+function headingId(text: string): string {
+  return "section-" + text.toLowerCase().replace(/[^\w\u4e00-\u9fff]+/g, "-").replace(/^-+|-+$/g, "");
+}
+
+function SectionNavigation({ source }: { source: string }) {
+  const headings = useMemo(() => {
+    return parseMarkdown(source).filter((b): b is MarkdownBlock & { level: number; html: string } =>
+      b.type === "heading" && b.level !== undefined && b.level >= 2 && b.level <= 3 && typeof b.html === "string"
+    );
+  }, [source]);
+
+  const [activeId, setActiveId] = useState<string>("");
+
+  useEffect(() => {
+    const ids = headings.map((h) => headingId(h.html ?? ""));
+    const observer = new IntersectionObserver(
+      (entries) => {
+        for (const entry of entries) {
+          if (entry.isIntersecting) {
+            setActiveId(entry.target.id);
+          }
+        }
+      },
+      { rootMargin: "-80px 0px -70% 0px" }
+    );
+    for (const id of ids) {
+      const el = document.getElementById(id);
+      if (el) observer.observe(el);
+    }
+    return () => observer.disconnect();
+  }, [headings]);
+
+  if (headings.length === 0) return null;
+
+  return (
+    <nav className="hidden lg:block" aria-label="章节导航">
+      <div className="sticky top-24 rounded-xl border border-gray-200 bg-white p-4 shadow-sm">
+        <p className="mb-3 text-xs font-semibold uppercase tracking-wider text-gray-500">本课目录</p>
+        <ul className="space-y-1">
+          {headings.map((h) => {
+            const id = headingId(h.html ?? "");
+            const isActive = activeId === id;
+            const isSub = h.level === 3;
+            return (
+              <li key={id}>
+                <a
+                  href={"#" + id}
+                  className={`block rounded-lg px-3 py-1.5 text-xs leading-relaxed transition ${
+                    isActive
+                      ? "bg-indigo-50 font-semibold text-indigo-700"
+                      : "text-gray-600 hover:bg-gray-50 hover:text-gray-900"
+                  } ${isSub ? "pl-6" : ""}`}
+                >
+                  {h.html?.replace(/<[^>]*>/g, "")}
+                </a>
+              </li>
+            );
+          })}
+        </ul>
+      </div>
+    </nav>
+  );
+}
+
+function MarkdownWithTOC({ source, className = "" }: { source: string; className?: string }) {
+  const contentRef = useRef<HTMLDivElement>(null);
+  const blocks = useMemo(() => parseMarkdown(source), [source]);
+
+  if (blocks.length === 0) {
+    return <p className="text-sm text-gray-500">暂无正文内容。</p>;
+  }
+
+  return (
+    <div ref={contentRef} className={`space-y-4 text-[15px] leading-7 text-gray-700 ${className}`}>
+      {blocks.map((block, index) => {
+        const key = `${block.type}-${index}`;
+        if (block.type === "heading" && block.level && block.level >= 2) {
+          const id = headingId(block.html ?? "");
+          const Tag = block.level === 2 ? "h2" : "h3";
+          const cls = block.level === 2 ? "pt-2 text-2xl" : "pt-1 text-xl";
+          return <Tag key={key} id={id} className={`${cls} font-bold text-gray-950 scroll-mt-24`} dangerouslySetInnerHTML={{ __html: block.html ?? "" }} />;
+        }
+        if (block.type === "heading" && block.level && block.level >= 4) {
+          const id = headingId(block.html ?? "");
+          return <h4 key={key} id={id} className="scroll-mt-24 pt-1 text-base font-bold text-gray-950" dangerouslySetInnerHTML={{ __html: block.html ?? "" }} />;
+        }
+        if (block.type === "code") {
+          return (
+            <div key={key} className="relative">
+              <button type="button" onClick={() => void navigator.clipboard.writeText(block.content ?? "")} className="absolute right-2 top-2 rounded-md border border-gray-700 bg-gray-900 px-2.5 py-1 text-xs font-medium text-gray-200 hover:bg-gray-800" aria-label="复制代码">复制</button>
+              <pre className="overflow-x-auto rounded-xl bg-gray-950 p-4 pr-20 text-sm leading-6 text-gray-100"><code>{block.content}</code></pre>
+            </div>
+          );
+        }
+        if (block.type === "list") {
+          const items = (block.html ?? "").split("\u0001").filter(Boolean);
+          const List = block.content === "ol" ? "ol" : "ul";
+          return (
+            <List key={key} className={`${block.content === "ol" ? "list-decimal" : "list-disc"} space-y-1 pl-6 marker:text-indigo-500`}>
+              {items.map((item, itemIndex) => <li key={itemIndex} dangerouslySetInnerHTML={{ __html: item }} />)}
+            </List>
+          );
+        }
+        if (block.type === "quote") {
+          return <blockquote key={key} className="border-l-4 border-indigo-300 bg-indigo-50/60 px-4 py-3 text-gray-700" dangerouslySetInnerHTML={{ __html: block.html ?? "" }} />;
+        }
+        if (block.type === "hr") return <hr key={key} className="border-gray-200" />;
+        return <p key={key} dangerouslySetInnerHTML={{ __html: block.html ?? "" }} />;
+      })}
+    </div>
+  );
 }

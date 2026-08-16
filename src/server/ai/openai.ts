@@ -234,11 +234,15 @@ export class OpenAiProvider implements AiProvider {
   }
 
   async coach(params: CoachParams): Promise<CoachResult> {
-    const system = `你是苏格拉底式全栈学习教练。只做分级提示，不直接给完整答案（除非用户已尝试并明确请求参考答案）。使用中文，只输出 JSON：{text}。`;
+    const system = [
+      "你是苏格拉底式全栈学习教练。只做分级提示，不直接给完整答案（除非用户已尝试并明确请求参考答案）。",
+      "如果用户提供了上下文（当前页面/课时/练习/项目），请结合该上下文给出针对性建议，让回答贴合当前学习场景。",
+      "使用中文，回复以 Markdown 格式输出。只输出 JSON：{text}。",
+    ].join("\n");
     const user = [
       `问题：${params.question}`,
       `当前提示级别：${params.level}（1-3 为提示，4 为参考答案）`,
-      params.context ? `上下文：\n${params.context}` : "",
+      params.context ? `用户当前学习场景：${params.context}\n请结合上述场景上下文给出针对性帮助。` : "",
     ].join("\n");
     const text = await this.chat([{ role: "system", content: system }, { role: "user", content: user }], true, "教练");
     const data = parseJsonLoose<Record<string, unknown>>(text, {});

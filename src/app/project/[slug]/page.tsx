@@ -158,6 +158,12 @@ export default function ProjectPage() {
         <h1 className="mt-2 text-3xl font-bold text-gray-950">{project.title}</h1>
         <p className="mt-3 max-w-3xl leading-7 text-gray-600">{project.description}</p>
         <div className="mt-5 max-w-sm"><ProgressBar value={project.mastery ?? 0} showLabel label="项目掌握度" /></div>
+        <div className="mt-5 flex flex-wrap gap-4 text-sm text-gray-500">
+          <span className="flex items-center gap-1.5"><span className="h-2 w-2 rounded-full bg-violet-400" aria-hidden />{project.tasks.length} 项任务</span>
+          <span className="flex items-center gap-1.5"><span className="h-2 w-2 rounded-full bg-indigo-400" aria-hidden />{project.deliverables.length} 项交付物</span>
+          <span className="flex items-center gap-1.5"><span className="h-2 w-2 rounded-full bg-emerald-400" aria-hidden />{project.acceptanceCriteria.length} 项验收标准</span>
+          <span className="flex items-center gap-1.5"><span className="h-2 w-2 rounded-full bg-amber-400" aria-hidden />{project.rubric.length} 项评分标准</span>
+        </div>
       </header>
 
       <div className="mt-8 grid gap-8 lg:grid-cols-[minmax(0,1fr)_22rem]">
@@ -185,13 +191,21 @@ export default function ProjectPage() {
           latestRepository={project.latestRepository ?? null}
         />
 
-        <aside className="space-y-6">
-          <section className="border-t border-gray-200 pt-5"><h2 className="text-base font-semibold text-gray-950">项目指南</h2><Markdown source={project.guideMarkdown} className="mt-3" /></section>
-          <Checklist title="交付物" items={project.deliverables} />
-          <Checklist title="任务清单" items={project.tasks} numbered />
-          <Checklist title="验收标准" items={project.acceptanceCriteria} />
+        <aside className="space-y-5">
+          <section className="rounded-xl border border-indigo-100 bg-indigo-50/50 p-5">
+            <div className="flex items-center gap-3">
+              <span className="flex h-8 w-8 items-center justify-center rounded-lg bg-indigo-100 text-sm">📘</span>
+              <h2 className="text-base font-semibold text-gray-950">项目指南</h2>
+            </div>
+            <div className="mt-3 text-sm leading-6 text-gray-700">
+              <Markdown source={project.guideMarkdown} className="mt-3" />
+            </div>
+          </section>
+          <Checklist title="交付物" items={project.deliverables} icon="📦" />
+          <Checklist title="任务清单" items={project.tasks} numbered icon="✅" />
+          <Checklist title="验收标准" items={project.acceptanceCriteria} icon="🎯" />
           <RubricPanel rubric={project.rubric} />
-          <Checklist title="复盘问题" items={project.reflectionQuestions} />
+          <Checklist title="复盘问题" items={project.reflectionQuestions} icon="💭" />
         </aside>
       </div>
 
@@ -266,12 +280,25 @@ function typeLabel(type: string): string {
   return type === "lesson" ? "课时" : type === "exercise" ? "练习" : "项目";
 }
 
-function Checklist({ title, items, numbered = false }: { title: string; items: string[]; numbered?: boolean }) {
+function Checklist({ title, items, numbered = false, icon }: { title: string; items: string[]; numbered?: boolean; icon?: string }) {
   const List = numbered ? "ol" : "ul";
+  const id = title.replace(/\s+/g, "-").toLowerCase();
+  const [expanded, setExpanded] = useState(true);
   return (
-    <section className="border-t border-gray-200 pt-5">
-      <h2 className="text-base font-semibold text-gray-950">{title}</h2>
-      {items.length === 0 ? <p className="mt-3 text-sm text-gray-500">暂无内容。</p> : <List className={`${numbered ? "list-decimal" : "list-disc"} mt-3 space-y-2 pl-5 text-sm leading-6 text-gray-700`}>{items.map((item) => <li key={item}>{item}</li>)}</List>}
+    <section className="rounded-xl border border-gray-200 bg-white p-5 shadow-sm">
+      <button type="button" onClick={() => setExpanded((v) => !v)} className="flex w-full items-center justify-between gap-3 text-left" aria-expanded={expanded} aria-controls={id}>
+        <div className="flex items-center gap-3">
+          {icon ? <span className="text-base" role="img" aria-hidden>{icon}</span> : null}
+          <h2 className="text-base font-semibold text-gray-950">{title}</h2>
+          <span className="rounded-full bg-gray-100 px-2 py-0.5 text-xs font-medium text-gray-500">{items.length}</span>
+        </div>
+        <svg className={`h-4 w-4 shrink-0 text-gray-400 transition ${expanded ? "rotate-180" : ""}`} xmlns="http://www.w3.org/2000/svg" viewBox="0 0 20 20" fill="currentColor" aria-hidden><path fillRule="evenodd" d="M5.23 7.21a.75.75 0 011.06.02L10 11.168l3.71-3.938a.75.75 0 111.08 1.04l-4.25 4.5a.75.75 0 01-1.08 0l-4.25-4.5a.75.75 0 01.02-1.06z" clipRule="evenodd" /></svg>
+      </button>
+      {expanded ? (
+        <>
+          {items.length === 0 ? <p className="mt-3 text-sm text-gray-500">暂无内容。</p> : <List className={`${numbered ? "list-decimal" : "list-disc"} mt-4 space-y-2 pl-5 text-sm leading-6 text-gray-700`}>{items.map((item) => <li key={item}>{item}</li>)}</List>}
+        </>
+      ) : null}
     </section>
   );
 }
@@ -299,7 +326,43 @@ function ReviewPanel({ review }: { review: ReviewResult }) {
   );
 }
 
-function RubricPanel({ rubric }: { rubric: ProjectDetail["rubric"] }) { return <section className="border-t border-gray-200 pt-5"><h2 className="text-base font-semibold text-gray-950">评分 Rubric</h2><div className="mt-3 space-y-3">{rubric.map((item) => <div key={item.id} className="rounded-lg border border-gray-200 p-3 text-sm"><p className="font-medium">{item.criterion} · 权重 {item.weight}%</p><p className="mt-1 text-xs text-gray-600">证据：{item.evidence.join("、")}</p><ul className="mt-2 space-y-1 text-xs text-gray-600"><li>优秀：{item.levels.excellent}</li><li>胜任：{item.levels.competent}</li><li>发展中：{item.levels.developing}</li><li>缺失：{item.levels.missing}</li></ul></div>)}</div></section>; }
+function RubricPanel({ rubric }: { rubric: ProjectDetail["rubric"] }) {
+  const [expanded, setExpanded] = useState(true);
+  const id = "rubric-section";
+  return (
+    <section className="rounded-xl border border-gray-200 bg-white p-5 shadow-sm">
+      <button type="button" onClick={() => setExpanded((v) => !v)} className="flex w-full items-center justify-between gap-3 text-left" aria-expanded={expanded} aria-controls={id}>
+        <div className="flex items-center gap-3">
+          <span className="text-base" role="img" aria-hidden>📋</span>
+          <h2 className="text-base font-semibold text-gray-950">评分 Rubric</h2>
+          <span className="rounded-full bg-gray-100 px-2 py-0.5 text-xs font-medium text-gray-500">{rubric.length} 项</span>
+        </div>
+        <svg className={`h-4 w-4 shrink-0 text-gray-400 transition ${expanded ? "rotate-180" : ""}`} xmlns="http://www.w3.org/2000/svg" viewBox="0 0 20 20" fill="currentColor" aria-hidden><path fillRule="evenodd" d="M5.23 7.21a.75.75 0 011.06.02L10 11.168l3.71-3.938a.75.75 0 111.08 1.04l-4.25 4.5a.75.75 0 01-1.08 0l-4.25-4.5a.75.75 0 01.02-1.06z" clipRule="evenodd" /></svg>
+      </button>
+      {expanded ? (
+        <div id={id} className="mt-4 space-y-3">
+          {rubric.map((item) => (
+            <details key={item.id} className="group rounded-lg border border-gray-200">
+              <summary className="flex cursor-pointer items-center justify-between gap-2 p-3 text-sm font-medium text-gray-900 hover:bg-gray-50">
+                <span>{item.criterion} · 权重 {item.weight}%</span>
+                <svg className="h-4 w-4 shrink-0 text-gray-400 transition group-open:rotate-90" xmlns="http://www.w3.org/2000/svg" viewBox="0 0 20 20" fill="currentColor" aria-hidden><path fillRule="evenodd" d="M8.22 5.22a.75.75 0 011.06 0l4.25 4.25a.75.75 0 010 1.06l-4.25 4.25a.75.75 0 01-1.06-1.06L11.94 10 8.22 6.28a.75.75 0 010-1.06z" clipRule="evenodd" /></svg>
+              </summary>
+              <div className="border-t border-gray-100 p-3 text-xs leading-5 text-gray-600">
+                <p className="font-medium text-gray-800">证据要求：{item.evidence.join("、")}</p>
+                <ul className="mt-2 space-y-1.5">
+                  <li className="rounded bg-emerald-50 p-1.5"><span className="font-semibold text-emerald-700">优秀：</span>{item.levels.excellent}</li>
+                  <li className="rounded bg-indigo-50 p-1.5"><span className="font-semibold text-indigo-700">胜任：</span>{item.levels.competent}</li>
+                  <li className="rounded bg-amber-50 p-1.5"><span className="font-semibold text-amber-700">发展中：</span>{item.levels.developing}</li>
+                  <li className="rounded bg-gray-50 p-1.5"><span className="font-semibold text-gray-500">缺失：</span>{item.levels.missing}</li>
+                </ul>
+              </div>
+            </details>
+          ))}
+        </div>
+      ) : null}
+    </section>
+  );
+}
 
 function RepoPanel({ repoUrl, onRepoUrlChange, repoFile, onRepoFileChange, repoSubmitting, repoError, repoResult, onRepoUrlSubmit, onArchiveSubmit, latestRepository }: {
   repoUrl: string;

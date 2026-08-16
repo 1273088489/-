@@ -64,22 +64,51 @@ export class MockAiProvider implements AiProvider {
 
   async coach(params: CoachParams): Promise<CoachResult> {
     const { question, level, context } = params;
-    const base =
-      context ? `(课程上下文：${context})\n` : "";
+    const ctxPrefix = context ? `[当前上下文：${context}]\n` : "";
     if (level >= 4) {
+      const ctxRef = context ? `\n（基于你当前在${context}的学习场景提供参考答案）` : "";
       return {
-        text: `${base}这是参考答案思路：\n1. 先明确输入与输出；\n2. 拆成小函数；\n3. 用测试验证每个小函数；\n4. 最后用你写的代码替换示例。\n试着把你现在的实现和这个思路对一下，说出差异。`,
+        text: `${ctxPrefix}这是参考答案思路：\n1. 先明确输入与输出；\n2. 拆成小函数；\n3. 用测试验证每个小函数；\n4. 最后用你写的代码替换示例。\n试着把你现在的实现和这个思路对一下，说出差异。${ctxRef}`,
         level,
         mode: "solution",
       };
     }
-    const hints: Record<number, string> = {
+    const sceneHints: Array<{ pages: string[]; hints: Record<number, string> }> = [
+      {
+        pages: ["course", "lesson", "课程", "课时"],
+        hints: {
+          1: "回过头看一遍课时中的关键概念，你卡住的地方往往在定义或边界条件上。",
+          2: "把课时里的示例代码和你的问题对比：输入输出格式完全一致吗？",
+          3: "试着用课时中的思路重新描述你的问题，有没有遗漏的步骤？",
+        },
+      },
+      {
+        pages: ["exercise", "练习"],
+        hints: {
+          1: "先不看代码，用自然语言描述你希望这个练习函数做什么。",
+          2: "写一个最小测试用例，只覆盖你确定的输入输出。",
+          3: "把问题拆成两步：先处理单条数据，再处理批量。",
+        },
+      },
+      {
+        pages: ["project", "项目"],
+        hints: {
+          1: "回顾项目的验收标准，你当前做的部分对应哪一条？",
+          2: "把项目要求拆成更小的子任务，先完成一个可运行的子集。",
+          3: "想一想你当前方案的边界情况：空输入、异常数据、未登录状态。",
+        },
+      },
+    ];
+    const defaultHints: Record<number, string> = {
       1: "先别写代码，复述一下：你希望这段代码完成什么？当前卡在哪一步？",
       2: "想一想：哪个输入可能让你现在的实现出错？先为它写一个最小测试。",
       3: "把问题拆小：先写一个只处理单条数据的函数，再考虑循环/批量。",
     };
+    const matched = context ? sceneHints.find((s) => s.pages.some((p) => context!.includes(p))) : undefined;
+    const hints = matched ? matched.hints : defaultHints;
+    const sceneRef = matched && context ? `（在${context}场景下）` : "";
     return {
-      text: `${base}提示 ${level}/3：${hints[level] ?? hints[1]}\n（关于“${question}”，先回答你自己的理解，再继续。）`,
+      text: `${ctxPrefix}提示 ${level}/3：${hints[level] ?? hints[1]}\n关于“${question}”${sceneRef}，先回答你自己的理解，再继续。`,
       level,
       mode: "hint",
     };

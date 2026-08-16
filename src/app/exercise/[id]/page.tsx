@@ -17,6 +17,8 @@ export default function ExercisePage() {
   const [result, setResult] = useState<ExerciseResult | null>(null);
   const [submitError, setSubmitError] = useState<string | null>(null);
   const [visibleHints, setVisibleHints] = useState(0);
+  const [draftRestored, setDraftRestored] = useState(false);
+  const DRAFT_KEY_PREFIX = "exercise-draft:";
 
   const load = useCallback(async () => {
     if (!id) return;
@@ -24,7 +26,16 @@ export default function ExercisePage() {
     setError(null);
     setResult(null);
     try {
-      setExercise(await apiExercise(id));
+      const ex = await apiExercise(id);
+      setExercise(ex);
+      // 恢复草稿
+      if (ex.answerType !== "choices") {
+        const saved = localStorage.getItem(DRAFT_KEY_PREFIX + ex.id);
+        if (saved !== null) {
+          setAnswer(saved);
+          setDraftRestored(true);
+        }
+      }
     } catch (err) {
       setExercise(null);
       setError(err instanceof ApiError ? err.message : "练习加载失败");
@@ -36,6 +47,44 @@ export default function ExercisePage() {
   useEffect(() => {
     void load();
   }, [load]);
+
+  // 自动保存草稿（非选择题）
+  useEffect(() => {
+    if (!exercise || exercise.answerType === "choices" || !answer.trim()) return;
+    const timer = setTimeout(() => {
+      localStorage.setItem(DRAFT_KEY_PREFIX + exercise.id, answer);
+    }, 500);
+    return () => clearTimeout(timer);
+  }, [exercise, answer]);
+
+  // 提交后清除草稿
+  useEffect(() => {
+    if (result && exercise) {
+      localStorage.removeItem(DRAFT_KEY_PREFIX + exercise.id);
+      setDraftRestored(false);
+    }
+  }, [result, exercise]);
+
+  function handleAnswerKeyDown(event: React.KeyboardEvent<HTMLTextAreaElement>) {
+    // Tab 缩进
+    if (event.key === "Tab") {
+      event.preventDefault();
+      const textarea = event.currentTarget;
+      const start = textarea.selectionStart;
+      const end = textarea.selectionEnd;
+      const newValue = answer.substring(0, start) + "  " + answer.substring(end);
+      setAnswer(newValue);
+      requestAnimationFrame(() => {
+        textarea.selectionStart = textarea.selectionEnd = start + 2;
+      });
+    }
+    // Ctrl+Enter / Cmd+Enter 提交
+    if (event.key === "Enter" && (event.ctrlKey || event.metaKey)) {
+      event.preventDefault();
+      const form = event.currentTarget.closest("form");
+      if (form) form.requestSubmit();
+    }
+  }
 
   async function handleSubmit(event: React.FormEvent) {
     event.preventDefault();
@@ -94,8 +143,14 @@ export default function ExercisePage() {
             </fieldset>
           ) : (
             <div>
-              <label htmlFor="answer" className="mb-2 block text-sm font-semibold text-gray-800">{exercise.answerType === "code" ? "你的代码" : "你的回答"}</label>
-              <textarea id="answer" value={answer} onChange={(event) => setAnswer(event.target.value)} placeholder={exercise.answerType === "code" ? "在这里粘贴或编写代码…" : "说明你的思路、步骤与取舍…"} className={textAreaClass} spellCheck={exercise.answerType !== "code"} />
+              <div className="mb-2 flex items-center justify-between gap-3">
+                <label htmlFor="answer" className="text-sm font-semibold text-gray-800">{exercise.answerType === "code" ? "你的代码" : "你的回答"}</label>
+                <div className="flex items-center gap-2">
+                  {draftRestored ? <span className="rounded-full bg-amber-100 px-2.5 py-0.5 text-xs font-medium text-amber-700">已恢复草稿</span> : null}
+                  {exercise.answerType === "code" ? <span className="text-xs text-gray-400">Tab 缩进 · Ctrl+Enter 提交</span> : null}
+                </div>
+              </div>
+              <textarea id="answer" value={answer} onChange={(event) => setAnswer(event.target.value)} onKeyDown={handleAnswerKeyDown} placeholder={exercise.answerType === "code" ? "在这里粘贴或编写代码…" : "说明你的思路、步骤与取舍…"} className={textAreaClass} spellCheck={exercise.answerType !== "code"} />
             </div>
           )}
 

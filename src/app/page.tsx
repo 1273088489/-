@@ -103,33 +103,47 @@ export default function HomePage() {
           <EmptyView message="暂无课程" hint="课程内容尚未发布，请稍后再来。" />
         ) : (
           <div className="grid gap-5 md:grid-cols-2">
-            {courses?.map((course) => (
+            {courses?.map((course, idx) => {
+              const stageLabels = ["第一阶段", "第二阶段", "第三阶段", "第四阶段", "第五阶段", "第六阶段"];
+              const stageLabel = stageLabels[idx] ?? "实战课程";
+              const progress = course.progress ?? 0;
+              return (
               <Card key={course.slug} className="flex flex-col p-6 transition hover:border-indigo-200 hover:shadow-md">
                 <div className="mb-3 flex items-center justify-between">
                   <span className="rounded-full bg-indigo-50 px-3 py-1 text-xs font-semibold text-indigo-700">
-                    {course.lessonCount != null ? `${course.lessonCount} 节课` : "实战课程"}
+                    {stageLabel}
                   </span>
-                  {course.projectCount != null ? (
-                    <span className="rounded-full bg-violet-50 px-3 py-1 text-xs font-semibold text-violet-700">
-                      {course.projectCount} 个项目
-                    </span>
-                  ) : null}
+                  <div className="flex gap-1.5">
+                    {course.lessonCount != null ? (
+                      <span className="rounded-full bg-indigo-50 px-2.5 py-1 text-xs font-semibold text-indigo-700">
+                        {course.lessonCount} 节课
+                      </span>
+                    ) : null}
+                    {course.projectCount != null ? (
+                      <span className="rounded-full bg-violet-50 px-2.5 py-1 text-xs font-semibold text-violet-700">
+                        {course.projectCount} 个项目
+                      </span>
+                    ) : null}
+                  </div>
                 </div>
                 <a href={`/course/${course.slug}`} className="group">
                   <h3 className="text-lg font-bold text-gray-900 transition group-hover:text-indigo-600">{course.title}</h3>
                 </a>
                 <p className="mt-2 flex-1 text-sm leading-relaxed text-gray-600">{course.description}</p>
                 <div className="mt-5">
-                  <ProgressBar value={course.progress ?? 0} showLabel label="课程进度" />
+                  <ProgressBar value={progress} showLabel label="课程进度" />
                 </div>
-                <a
-                  href={`/course/${course.slug}`}
-                  className="mt-5 inline-flex items-center justify-center rounded-xl bg-gray-950 px-5 py-2.5 text-sm font-semibold text-white transition hover:bg-gray-800"
-                >
-                  进入课程 →
-                </a>
+                <div className="mt-5 flex gap-3">
+                  <a
+                    href={`/course/${course.slug}`}
+                    className="flex-1 rounded-xl bg-gray-950 px-5 py-2.5 text-center text-sm font-semibold text-white transition hover:bg-gray-800"
+                  >
+                    {progress > 0 ? "继续学习 →" : "开始学习 →"}
+                  </a>
+                </div>
               </Card>
-            ))}
+            );
+            })}
           </div>
         )}
         {usingDemo ? (
