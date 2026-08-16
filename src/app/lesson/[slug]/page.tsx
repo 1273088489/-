@@ -20,6 +20,17 @@ export default function LessonPage() {
   const [completed, setCompleted] = useState(false);
   const [completeMsg, setCompleteMsg] = useState<string | null>(null);
   const [completeErr, setCompleteErr] = useState<string | null>(null);
+  const [tocWidth, setTocWidth] = useState<number>(() => {
+    const saved = typeof window !== "undefined" ? localStorage.getItem("quanzhan.tocWidth") : null;
+    return saved ? Math.max(128, Math.min(256, Number(saved))) : 256;
+  });
+  const [tocCollapsed, setTocCollapsed] = useState<boolean>(() => {
+    const saved = typeof window !== "undefined" ? localStorage.getItem("quanzhan.tocCollapsed") : null;
+    return saved === "true";
+  });
+
+  useEffect(() => { localStorage.setItem("quanzhan.tocWidth", String(tocWidth)); }, [tocWidth]);
+  useEffect(() => { localStorage.setItem("quanzhan.tocCollapsed", String(tocCollapsed)); }, [tocCollapsed]);
 
   const load = useCallback(async () => {
     if (!slug) return;
@@ -84,9 +95,11 @@ export default function LessonPage() {
     );
   }
 
+  const contentPadding = tocCollapsed ? 0 : tocWidth;
+
   return (
-    <div className="lg:pl-64">
-      <SectionNavigation source={lesson.contentMarkdown} />
+    <div style={{ paddingLeft: contentPadding + "px" }} className="transition-[padding] duration-200">
+      <SectionNavigation source={lesson.contentMarkdown} width={tocWidth} collapsed={tocCollapsed} onWidthChange={setTocWidth} onToggleCollapse={() => setTocCollapsed((v) => !v)} />
       <div className="mx-auto max-w-4xl px-4 py-10 sm:px-6">
       <div className="flex items-center justify-between gap-3">
         <Link href={`/course/${lesson.courseSlug ?? "#"}`} className="text-sm font-medium text-indigo-600 hover:text-indigo-700">
@@ -194,7 +207,13 @@ function headingId(text: string): string {
   return "section-" + text.toLowerCase().replace(/[^\w\u4e00-\u9fff]+/g, "-").replace(/^-+|-+$/g, "");
 }
 
-function SectionNavigation({ source }: { source: string }) {
+function SectionNavigation({ source, width, collapsed, onWidthChange, onToggleCollapse }: {
+  source: string;
+  width: number;
+  collapsed: boolean;
+  onWidthChange: (w: number) => void;
+  onToggleCollapse: () => void;
+}) {
   const headings = useMemo(() => {
     return parseMarkdown(source).filter((b): b is MarkdownBlock & { level: number; html: string } =>
       b.type === "heading" && b.level !== undefined && b.level >= 2 && b.level <= 3 && typeof b.html === "string"
@@ -202,6 +221,9 @@ function SectionNavigation({ source }: { source: string }) {
   }, [source]);
 
   const [activeId, setActiveId] = useState<string>("");
+  const dragging = useRef(false);
+  const startX = useRef(0);
+  const startW = useRef(0);
 
   useEffect(() => {
     const ids = headings.map((h) => headingId(h.html ?? ""));
@@ -222,35 +244,97 @@ function SectionNavigation({ source }: { source: string }) {
     return () => observer.disconnect();
   }, [headings]);
 
+  useEffect(() => {
+    function onMouseMove(e: MouseEvent) {
+      if (!dragging.current) return;
+      e.preventDefault();
+      const delta = e.clientX - startX.current;
+      const next = Math.max(128, Math.min(256, startW.current + delta));
+      onWidthChange(next);
+    }
+    function onMouseUp() {
+      dragging.current = false;
+      document.body.style.cursor = "";
+      document.body.style.userSelect = "";
+    }
+    document.addEventListener("mousemove", onMouseMove);
+    document.addEventListener("mouseup", onMouseUp);
+    return () => {
+      document.removeEventListener("mousemove", onMouseMove);
+      document.removeEventListener("mouseup", onMouseUp);
+    };
+  }, [onWidthChange]);
+
   if (headings.length === 0) return null;
 
+  const itemClass = (isActive: boolean, isSub: boolean) =>
+    "block rounded-lg px-3 py-1.5 text-xs leading-relaxed transition " +
+    (isActive ? "bg-indigo-50 font-semibold text-indigo-700" : "text-gray-600 hover:bg-gray-50 hover:text-gray-900") +
+    (isSub ? " pl-6" : "");
+
   return (
-    <nav className="fixed left-0 top-24 z-10 hidden h-[calc(100vh-6rem)] w-64 border-r border-gray-200 bg-white lg:block" aria-label="章节导航">
-      <div className="h-full overflow-y-auto p-4">
-        <p className="mb-3 text-xs font-semibold uppercase tracking-wider text-gray-500">本课目录</p>
-        <ul className="space-y-1">
-          {headings.map((h) => {
-            const id = headingId(h.html ?? "");
-            const isActive = activeId === id;
-            const isSub = h.level === 3;
-            return (
-              <li key={id}>
-                <a
-                  href={"#" + id}
-                  className={`block rounded-lg px-3 py-1.5 text-xs leading-relaxed transition ${
-                    isActive
-                      ? "bg-indigo-50 font-semibold text-indigo-700"
-                      : "text-gray-600 hover:bg-gray-50 hover:text-gray-900"
-                  } ${isSub ? "pl-6" : ""}`}
-                >
-                  {h.html?.replace(/<[^>]*>/g, "")}
-                </a>
-              </li>
-            );
-          })}
-        </ul>
-      </div>
-    </nav>
+    <>
+      {collapsed ? (
+        <button
+          type="button"
+          onClick={onToggleCollapse}
+          className="fixed left-0 top-24 z-10 hidden h-12 w-6 items-center justify-center rounded-r-md border border-l-0 border-gray-200 bg-white text-xs text-gray-500 hover:bg-gray-100 hover:text-gray-700 lg:flex"
+          aria-label="展开目录"
+        >
+          &gt;&gt;
+        </button>
+      ) : null}
+
+      {!collapsed ? (
+        <nav className="fixed left-0 top-24 z-10 hidden h-[calc(100vh-6rem)] border-r border-gray-200 bg-white lg:block" style={{ width: width + "px" }} aria-label="章节导航">
+          <div className="flex h-full flex-col">
+            <div className="flex items-center justify-between px-4 pt-4 pb-2">
+              <p className="text-xs font-semibold uppercase tracking-wider text-gray-500">本课目录</p>
+              <button
+                type="button"
+                onClick={onToggleCollapse}
+                className="rounded p-1 text-gray-400 hover:bg-gray-100 hover:text-gray-600"
+                aria-label="收起目录"
+              >
+                <svg className="h-3.5 w-3.5" viewBox="0 0 20 20" fill="currentColor" aria-hidden>
+                  <path fillRule="evenodd" d="M12.79 5.23a.75.75 0 01-.02 1.06L8.832 10l3.938 3.71a.75.75 0 11-1.04 1.08l-4.5-4.25a.75.75 0 010-1.08l4.5-4.25a.75.75 0 011.06.02z" clipRule="evenodd" />
+                </svg>
+              </button>
+            </div>
+            <div className="flex-1 overflow-y-auto px-4 pb-4">
+              <ul className="space-y-1">
+                {headings.map((h) => {
+                  const id = headingId(h.html ?? "");
+                  const isActive = activeId === id;
+                  const isSub = h.level === 3;
+                  return (
+                    <li key={id}>
+                      <a
+                        href={"#" + id}
+                        className={itemClass(isActive, isSub)}
+                      >
+                        {h.html?.replace(/<[^>]*>/g, "")}
+                      </a>
+                    </li>
+                  );
+                })}
+              </ul>
+            </div>
+          </div>
+          <div
+            className="absolute right-0 top-0 z-20 h-full w-1.5 cursor-col-resize transition-colors hover:bg-indigo-400 active:bg-indigo-500"
+            onMouseDown={(e: React.MouseEvent<HTMLDivElement>) => {
+              dragging.current = true;
+              startX.current = e.clientX;
+              startW.current = width;
+              document.body.style.cursor = "col-resize";
+              document.body.style.userSelect = "none";
+            }}
+            aria-label="调整宽度"
+          />
+        </nav>
+      ) : null}
+    </>
   );
 }
 
