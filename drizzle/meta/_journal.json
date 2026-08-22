@@ -50,6 +50,27 @@
       "when": 1786481847779,
       "tag": "0006_tricky_lord_hawal",
       "breakpoints": true
+    },
+    {
+      "idx": 7,
+      "version": "6",
+      "when": 1786481847778,
+      "tag": "0007_terminal_runtime",
+      "breakpoints": true
+    },
+    {
+      "idx": 8,
+      "version": "6",
+      "when": 1787324262596,
+      "tag": "0008_terminal_workspace_initialized",
+      "breakpoints": true
+    },
+    {
+      "idx": 9,
+      "version": "6",
+      "when": 1787332188524,
+      "tag": "0009_terminal_workspace_initialization_v2",
+      "breakpoints": true
     }
   ]
 }

@@ -1,0 +1,20 @@
+{
+  "schemaVersion": "aegis.schema.v0",
+  "taskId": "2026-08-21-ttyd-learning-terminal",
+  "lastCheckpointRef": "docs/aegis/work/2026-08-21-ttyd-learning-terminal/todo-checkpoint-draft.json",
+  "resumeInstruction": "If continuing, do not delete the retained 111@11.com runtime or active port 3000 server without a new scoped confirmation",
+  "knownPartialWork": [
+    "Inventory processes, temporary files, Docker resources, and runtime records",
+    "Remove only confirmed smoke artifacts and stale test processes",
+    "Verify no unintended project resources were deleted",
+    "Run cleanup and repository checks"
+  ],
+  "mustReadBeforeContinuing": [
+    "docs/aegis/work/2026-08-21-ttyd-learning-terminal/10-intent.md",
+    "docs/aegis/work/2026-08-21-ttyd-learning-terminal/20-checkpoint.md",
+    "docs/aegis/work/2026-08-21-ttyd-learning-terminal/todo-checkpoint-draft.json"
+  ],
+  "unsafeToAssume": [
+    "Harness job history remains as completed metadata; active port 3000 server was not created by this cleanup turn and was intentionally retained"
+  ]
+}

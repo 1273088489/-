@@ -52,9 +52,7 @@ export async function clearSessionCookie() {
   cookieStore.delete(SESSION_COOKIE);
 }
 
-export async function getSessionUser() {
-  const cookieStore = await cookies();
-  const token = cookieStore.get(SESSION_COOKIE)?.value;
+export function getSessionUserByToken(token: string | null | undefined) {
   if (!token) return null;
   const row = db
     .select({ session: sessions, user: users })
@@ -65,6 +63,11 @@ export async function getSessionUser() {
   if (!row) return null;
   if (new Date(row.session.expiresAt).getTime() < Date.now()) return null;
   return row.user;
+}
+
+export async function getSessionUser() {
+  const cookieStore = await cookies();
+  return getSessionUserByToken(cookieStore.get(SESSION_COOKIE)?.value);
 }
 
 export async function logoutSession(token: string) {

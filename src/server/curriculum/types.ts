@@ -18,6 +18,15 @@ export interface ExerciseDef {
   correctChoiceIndex?: number;
 }
 
+export interface LessonTerminalStep {
+  id: string;
+  title: string;
+  kind: "setup" | "implement" | "verify" | "reflect";
+  durationMinutes: number;
+  command: string;
+  output: string;
+}
+
 export interface LessonDef {
   slug: string;
   title: string;
@@ -25,6 +34,7 @@ export interface LessonDef {
   contentMarkdown: string;
   requiresPass: boolean;
   exercises: ExerciseDef[];
+  terminalSteps: LessonTerminalStep[];
 }
 
 export interface StageProjectDef {

@@ -1,0 +1,1 @@
+ALTER TABLE `terminal_runtime` ADD `workspace_initialization_version` integer DEFAULT 0 NOT NULL;

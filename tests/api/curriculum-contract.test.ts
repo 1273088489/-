@@ -128,10 +128,23 @@ describe("public curriculum API contract", () => {
       const lesson = successBodies[2];
       expectExactKeys(lesson, [
         "id", "slug", "title", "orderIndex", "contentMarkdown", "requiresPass", "courseSlug",
-        "courseTitle", "status", "mastery", "exercises", "prevLessonSlug", "nextLessonSlug",
+        "courseTitle", "status", "mastery", "exercises", "terminalSteps", "prevLessonSlug", "nextLessonSlug",
       ]);
       expect(lesson.slug).toBe("s1-dev-environment");
       expect(lesson.contentMarkdown).toContain("## 学习目标");
+      const terminalSteps = lesson.terminalSteps as unknown[];
+      expect(Array.isArray(terminalSteps)).toBe(true);
+      expect(terminalSteps.length).toBeGreaterThan(0);
+      for (const step of terminalSteps) {
+        expectExactKeys(step, ["id", "title", "kind", "durationMinutes", "command", "output"]);
+        expect(step.id).toEqual(expect.any(String));
+        expect(step.title).toEqual(expect.any(String));
+        expect(step.kind).toMatch(/^(setup|implement|verify|reflect)$/);
+        expect(step.durationMinutes).toEqual(expect.any(Number));
+        expect(step.durationMinutes).toBeGreaterThan(0);
+        expect(step.command).toEqual(expect.any(String));
+        expect(step.output).toEqual(expect.any(String));
+      }
       for (const summary of lesson.exercises as unknown[]) {
         expectExactKeys(summary, ["id", "slug", "prompt", "answerType", "status", "mastery"]);
       }

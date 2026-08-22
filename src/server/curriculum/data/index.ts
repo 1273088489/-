@@ -1,5 +1,48 @@
-import type { CourseDef, ProjectRubricCriterion } from "../types";
+import type { CourseDef, LessonTerminalStep, ProjectRubricCriterion } from "../types";
 import { PROJECT_TESTS } from "./tests";
+
+const terminalStep = (lesson: string, index: number, title: string, kind: LessonTerminalStep["kind"], durationMinutes: number, command: string, output: string): LessonTerminalStep => ({
+  id: `${lesson}-terminal-${index}`, title, kind, durationMinutes, command, output,
+});
+
+const TERMINAL_STEPS: Record<string, LessonTerminalStep[]> = {
+  "s1-dev-environment": [
+    terminalStep("s1-dev-environment", 1, "确认工作目录", "setup", 5, "pwd && git rev-parse --show-toplevel", "仓库顶层路径与当前项目目录一致。"),
+    terminalStep("s1-dev-environment", 2, "核对工具链", "setup", 5, "node --version && npm --version && git --version", "记录 Node.js、npm 与 Git 的实际版本。"),
+    terminalStep("s1-dev-environment", 3, "建立 Git 基线", "implement", 10, "git init && git status && git add README.md .gitignore", "暂存区只包含需求基线文件。"),
+    terminalStep("s1-dev-environment", 4, "验证提交", "verify", 5, "git commit -m \"docs: establish ticket system baseline\" && git status", "提交成功且工作区干净。"),
+  ],
+  "s2-vanilla-js": [
+    terminalStep("s2-vanilla-js", 1, "检查原生项目", "setup", 5, "ls index.html style.css app.js", "三个浏览器入口文件均存在。"),
+    terminalStep("s2-vanilla-js", 2, "运行静态检查", "implement", 10, "node --check app.js", "JavaScript 语法检查通过。"),
+    terminalStep("s2-vanilla-js", 3, "验证持久化契约", "verify", 15, "npm test -- --run s2", "新增、完成、删除和刷新恢复用例通过。"),
+  ],
+  "s3-react": [
+    terminalStep("s3-react", 1, "安装并检查类型", "setup", 5, "npm ci && npm run typecheck", "React 组件与 props 类型检查通过。"),
+    terminalStep("s3-react", 2, "运行组件测试", "implement", 15, "npm test -- --run s3", "渲染、事件上报和筛选行为通过。"),
+    terminalStep("s3-react", 3, "构建前端", "verify", 10, "npm run build", "生产构建产物生成成功。"),
+  ],
+  "s4-node-postgres": [
+    terminalStep("s4-node-postgres", 1, "检查 API 契约", "setup", 10, "npm run typecheck", "路由、仓储和数据库类型一致。"),
+    terminalStep("s4-node-postgres", 2, "应用数据库迁移", "implement", 10, "npm run db:migrate", "开发数据库结构与版本化迁移一致。"),
+    terminalStep("s4-node-postgres", 3, "验证 CRUD API", "verify", 15, "npm test -- --run s4-node-postgres", "创建、列表、更新、删除及错误响应通过。"),
+  ],
+  "s4-auth-authorization": [
+    terminalStep("s4-auth-authorization", 1, "检查会话配置", "setup", 5, "npm run typecheck", "认证上下文和会话类型检查通过。"),
+    terminalStep("s4-auth-authorization", 2, "验证身份边界", "implement", 15, "npm test -- --run auth", "未登录请求被拒绝，登录身份可被解析。"),
+    terminalStep("s4-auth-authorization", 3, "验证对象级授权", "verify", 15, "npm test -- --run authorization", "所有者可操作，他人工单返回拒绝且数据不变。"),
+  ],
+  "s4-testing-ci": [
+    terminalStep("s4-testing-ci", 1, "检查测试配置", "setup", 5, "npm run typecheck", "测试夹具与应用类型检查通过。"),
+    terminalStep("s4-testing-ci", 2, "执行完整测试", "implement", 20, "npm test -- --run", "单元、集成和边界测试完成并输出报告。"),
+    terminalStep("s4-testing-ci", 3, "模拟 CI 门禁", "verify", 10, "npm run typecheck && npm test && npm run build", "类型检查、测试和构建均成功。"),
+  ],
+  "s4-docker-deployment": [
+    terminalStep("s4-docker-deployment", 1, "检查容器配置", "setup", 5, "docker compose --env-file .env.example config", "Compose 配置展开成功且未读取真实秘密。"),
+    terminalStep("s4-docker-deployment", 2, "构建应用镜像", "implement", 15, "docker build -t ticket-system:local .", "应用镜像构建成功。"),
+    terminalStep("s4-docker-deployment", 3, "验证服务健康", "verify", 15, "docker compose up -d && curl http://localhost:3000/api/health", "服务启动并返回健康响应；命令仅为示例，不执行 Docker。"),
+  ],
+};
 
 function createProjectRubric(evidence: {
   implementation: string;
@@ -49,6 +92,7 @@ export const courses: CourseDef[] = [
     lessons: [
       {
         slug: "s1-dev-environment",
+        terminalSteps: TERMINAL_STEPS["s1-dev-environment"],
         title: "第 1 阶段课时：开发环境、终端与 Git",
         orderIndex: 0,
         requiresPass: true,
@@ -211,6 +255,7 @@ export const courses: CourseDef[] = [
       },
       {
         slug: "s2-vanilla-js",
+        terminalSteps: TERMINAL_STEPS["s2-vanilla-js"],
         title: "第 2 阶段课时：用原生 JavaScript 构建工单看板",
         orderIndex: 1,
         requiresPass: true,
@@ -404,6 +449,7 @@ list.addEventListener("click", (event) => {
       },
       {
         slug: "s3-react",
+        terminalSteps: TERMINAL_STEPS["s3-react"],
         title: "第 3 阶段课时：用 React 重构工单看板",
         orderIndex: 2,
         requiresPass: true,
@@ -600,6 +646,7 @@ function TicketItem({ ticket, onToggle, onDelete }: TicketItemProps) {
       },
       {
         slug: "s4-node-postgres",
+        terminalSteps: TERMINAL_STEPS["s4-node-postgres"],
         title: "第四阶段第 1 课：Node/Express API 与 PostgreSQL",
         orderIndex: 3,
         requiresPass: true,
@@ -814,6 +861,7 @@ async function listTickets() {
       },
       {
         slug: "s4-auth-authorization",
+        terminalSteps: TERMINAL_STEPS["s4-auth-authorization"],
         title: "第四阶段第 2 课：认证、会话与对象级授权",
         orderIndex: 4,
         requiresPass: true,
@@ -1009,6 +1057,7 @@ API 和数据库已经能共享工单，但目前任何调用方都可能读取�
         ],
       },
       {
+        terminalSteps: TERMINAL_STEPS["s4-testing-ci"],
         slug: "s4-testing-ci",
         title: "第四阶段第 3 课：测试策略与持续集成",
         orderIndex: 5,
@@ -1215,6 +1264,7 @@ jobs:
       },
       {
         slug: "s4-docker-deployment",
+        terminalSteps: TERMINAL_STEPS["s4-docker-deployment"],
         title: "第四阶段第 4 课：Docker 部署与运行维护",
         orderIndex: 6,
         requiresPass: true,

@@ -10,7 +10,7 @@
 - **框架**：Next.js 15+（App Router）+ React 19 + TypeScript
 - **样式**：Tailwind CSS 4
 - **数据库**：本地优先 **SQLite（better-sqlite3）**，通过 Drizzle ORM 访问；保留 PostgreSQL 适配（pg + drizzle），提供 docker-compose 作为可选。
-- **AI**：AI 适配层，优先 OpenAI 兼容接口；无 key 时退化为本地规则 mock（可运行、可演示）。
+- **AI**：AI 适配层，支持 OpenAI 兼容的 Chat Completions 和 Responses 接口；无 key 时退化为本地规则 mock（可运行、可演示）。
 - **测试**：Vitest（单元）+ Playwright（E2E）。
 - **形成性评审**：文本/代码提交不直接在服务器运行用户代码；练习依据公开 rubric 提供自评和 AI 提示，没有隐藏测试。仓库提交的代码只在受限 Docker 沙箱中执行（见 P2-03），并在沙箱内运行公开与隐藏测试（见 P2-04）。
 - **Git 仓库接收（P2-02）**：项目页支持提交公开 https 仓库地址或上传 .zip/.tar.gz，系统在隔离临时目录中浅克隆/解包，解析分支、最近提交、diff 统计与变更文件行号，产出 `RepoSnapshot` 并入库。
@@ -62,5 +62,19 @@ npm run test      # 单元测试
 ```
 
 默认访问地址：`http://localhost:3000`。首次进入先注册账号；未配置 AI Key 时会自动使用本地 Mock AI，代码审查、分级提示和选型实验仍可完整演示。
+
+### 持久学习终端部署
+
+共享终端使用同一登录用户和课程的持久 Docker 容器与 named volume。配置 `TERMINAL_IMAGE` 时必须使用完整的 `@sha256:` digest：
+
+```bash
+export TERMINAL_IMAGE="registry.example.com/quanzhan/ttyd:版本@sha256:<64位小写十六进制 digest>"
+docker pull "$TERMINAL_IMAGE"
+docker image inspect "$TERMINAL_IMAGE"
+npm run db:push
+npm run dev
+```
+
+`docker pull` 只应由部署人员在启用终端前显式执行；应用运行时只做本地 `docker image inspect`，不会自动拉取镜像。终端没有 published port，浏览器只访问同源 `/terminal/{courseSlug}/`，正常退出会删除容器但保留课程卷和数据库记录；TTL 到期或显式重置才会删除卷。
 
 截至 2026-08-10，本项目安装并验证的主要版本为 Next.js 16.3.0、React 19.2.8、TypeScript 7.0.2、Drizzle ORM 0.45.2、better-sqlite3 13.0.3、Vitest 4.1.10 与 Playwright 1.62.1。

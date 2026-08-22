@@ -1,0 +1,19 @@
+{
+  "schemaVersion": "aegis.schema.v0",
+  "requestedOutcome": "Implement the approved Docker plus ttyd shared learning terminal plan without committing changes",
+  "goal": "Authenticated learners can use one secure persistent terminal shared by lesson and exercise pages per user and course",
+  "successEvidence": [
+    "Focused runtime and gateway tests, typecheck, full tests, build, diff check, and opt-in Docker/browser smoke evidence"
+  ],
+  "stopCondition": "done, blocked by a concrete external condition, needs-verification, or scope-exceeded",
+  "nonGoals": [
+    "Do not pull images, add dependencies, reset existing changes, or modify unrelated curriculum/auth behavior"
+  ],
+  "scope": "src/server/terminal runtime, custom ttyd proxy, lesson/exercise terminal UI, configuration, tests, and verification",
+  "changeKinds": [
+    "architecture-and-feature"
+  ],
+  "riskHints": [
+    "Docker lifecycle, WebSocket proxying, persistent volume retention, auth boundary, and existing dirty worktree"
+  ]
+}

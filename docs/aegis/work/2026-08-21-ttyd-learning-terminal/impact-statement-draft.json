@@ -1,0 +1,20 @@
+{
+  "schemaVersion": "aegis.schema.v0",
+  "affectedLayers": [
+    "runtime, database, server gateway, frontend, configuration, tests"
+  ],
+  "owners": [
+    "captain",
+    "runtime-owner",
+    "proxy-owner",
+    "frontend-owner",
+    "quality-owner"
+  ],
+  "invariants": [
+    "One canonical persistent terminal owner; one user-course runtime; no host execution fallback, public Docker port, host mount, Docker socket, or automatic image pull"
+  ],
+  "compatBoundary": "Preserve one-shot sandbox semantics, current session auth, lesson/exercise submission behavior, and unrelated dirty changes",
+  "nonGoals": [
+    "Do not pull images, add dependencies, reset existing changes, or modify unrelated curriculum/auth behavior"
+  ]
+}

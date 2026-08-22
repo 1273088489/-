@@ -72,6 +72,15 @@ export interface CourseDetail {
 // —— 课时 ——
 export type ExerciseAnswerType = "choices" | "text" | "code";
 
+export interface LessonTerminalStep {
+  id: string;
+  title: string;
+  kind: "setup" | "implement" | "verify" | "reflect";
+  durationMinutes: number;
+  command: string;
+  output: string;
+}
+
 export interface ExerciseSummary {
   id: string;
   slug: string;
@@ -93,6 +102,7 @@ export interface LessonDetail {
   status?: LearningStatus;
   mastery?: Mastery;
   exercises: ExerciseSummary[];
+  terminalSteps: LessonTerminalStep[];
   nextLessonSlug?: string | null;
   prevLessonSlug?: string | null;
 }

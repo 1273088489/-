@@ -3,7 +3,7 @@
 import Link from "next/link";
 import { useParams } from "next/navigation";
 import { useCallback, useEffect, useState } from "react";
-import { EmptyView, ErrorView, LoadingView, ProgressBar } from "@/components";
+import { EmptyView, ErrorView, LessonTerminal, LoadingView, ProgressBar } from "@/components";
 import { ApiError, apiExercise, apiSubmitExercise } from "@/lib/client/api";
 import type { ExerciseDetail, ExerciseResult } from "@/types";
 
@@ -115,6 +115,8 @@ export default function ExercisePage() {
 
   return (
     <PageShell>
+      <div className="grid items-start gap-8 lg:grid-cols-[minmax(0,1fr)_380px]">
+      <main className="min-w-0">
       <div className="flex flex-wrap items-center justify-between gap-3">
         <Link href={`/lesson/${exercise.lessonSlug}`} className="text-sm font-medium text-indigo-600 hover:text-indigo-700">← {exercise.lessonTitle}</Link>
       </div>
@@ -184,12 +186,17 @@ export default function ExercisePage() {
           {result.rubricResults?.length ? <div className="mt-4"><p className="text-sm font-semibold text-gray-800">逐项形成性反馈</p><div className="mt-2 space-y-2">{result.rubricResults.map((item) => <div key={item.criterion} className="rounded-lg border border-gray-200 p-3 text-xs"><p className="font-medium">{item.criterion} · {item.evidenceStatus === "supported" ? "已有证据" : "缺失证据"}</p><p className="mt-1 text-gray-600">已有：{item.evidence.join("、") || "无"}；缺失：{item.missingEvidence.join("、") || "无"}；下一步：{item.nextStep}</p></div>)}</div></div> : null}
         </section>
       ) : null}
+      </main>
+      <aside className="min-w-0 lg:sticky lg:top-24">
+        <LessonTerminal courseSlug={exercise.courseSlug} />
+      </aside>
+      </div>
     </PageShell>
   );
 }
 
 function PageShell({ children }: { children: React.ReactNode }) {
-  return <div className="mx-auto max-w-4xl px-4 py-10 sm:px-6">{children}</div>;
+  return <div className="mx-auto max-w-7xl px-4 py-10 sm:px-6">{children}</div>;
 }
 
 function answerTypeLabel(type: ExerciseDetail["answerType"]): string {

@@ -61,6 +61,10 @@ function expectLessonContract(slug: string): void {
   expect(reflection).toMatch(/设计取舍/);
   expect(reflection).toMatch(/迁移/);
 
+  expect(lesson.terminalSteps.length).toBeGreaterThan(0);
+  expect(new Set(lesson.terminalSteps.map((step) => step.id)).size).toBe(lesson.terminalSteps.length);
+  expect(lesson.terminalSteps.every((step) => step.durationMinutes > 0 && step.command.trim() !== "")).toBe(true);
+
   expect(lesson.exercises.length).toBeGreaterThan(0);
   for (const exercise of lesson.exercises) {
     expect(exercise.prompt).toMatch(/提交.*(?:列出|写出|给出|画出|记录|说明|实现|附上|标出|提供|渲染|写入|显示|查询|过滤|忽略|触发|使用|依次|禁止)/);

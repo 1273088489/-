@@ -272,6 +272,27 @@ export const remediationPaths = sqliteTable("remediation_path", {
 });
 
 
+export const terminalRuntimes = sqliteTable(
+  "terminal_runtime",
+  {
+    id: id(),
+    userId: text("user_id")
+      .notNull()
+      .references(() => users.id, { onDelete: "cascade" }),
+    courseSlug: text("course_slug").notNull(),
+    volumeName: text("volume_name").notNull(),
+    containerName: text("container_name").notNull(),
+    networkName: text("network_name").notNull(),
+    containerId: text("container_id").notNull().default(""),
+    containerAddress: text("container_address").notNull().default(""),
+    workspaceInitializedAt: text("workspace_initialized_at").notNull().default(""),
+    workspaceInitializationVersion: integer("workspace_initialization_version").notNull().default(0),
+    lastActiveAt: text("last_active_at").notNull(),
+    ...timestamps,
+  },
+  (table) => [uniqueIndex("terminal_runtime_user_course_unique").on(table.userId, table.courseSlug)],
+);
+
 export const choiceLabs = sqliteTable("choice_lab", {
   id: id(),
   scenarioId: text("scenario_id").notNull(),
@@ -343,6 +364,7 @@ export const usersRelations = relations(users, ({ many }) => ({
   sessions: many(sessions),
   learningRecords: many(learningRecords),
   remediationPaths: many(remediationPaths),
+  terminalRuntimes: many(terminalRuntimes),
 }));
 
 export type User = typeof users.$inferSelect;

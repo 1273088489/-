@@ -81,6 +81,7 @@ describe("generated SQL migrations", () => {
         "sandbox_run",
         "session",
         "stage_project",
+        "terminal_runtime",
         "test_case",
         "test_run",
         "user",
@@ -90,6 +91,7 @@ describe("generated SQL migrations", () => {
           "course_slug_unique",
           "session_token_unique",
           "stage_project_slug_unique",
+          "terminal_runtime_user_course_unique",
           "user_email_unique",
         ]),
       );

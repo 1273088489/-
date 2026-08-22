@@ -1,0 +1,15 @@
+{
+  "schemaVersion": "aegis.schema.v0",
+  "baselineRefs": [
+    "CONTEXT.md",
+    "docs/aegis/plans/2026-08-21-ttyd-learning-terminal.md",
+    "src/server/auth/session.ts",
+    "src/server/sandbox/docker.ts",
+    "src/server/sandbox/runner.ts",
+    "node_modules/next/dist/docs/01-app/02-guides/custom-server.md"
+  ],
+  "impactStatement": "docs/aegis/work/2026-08-21-ttyd-learning-terminal/impact-statement-draft.json",
+  "compatPlan": "Preserve one-shot sandbox semantics, current session auth, lesson/exercise submission behavior, and unrelated dirty changes",
+  "retirementPlan": "not-yet-verified",
+  "evidenceBundle": []
+}

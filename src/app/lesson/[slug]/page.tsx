@@ -4,7 +4,7 @@ import Link from "next/link";
 import { useParams } from "next/navigation";
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { ApiError, apiLesson, apiCompleteLesson } from "@/lib/client/api";
-import { Card, EmptyView, ErrorView, LoadingView, Markdown } from "@/components";
+import { Card, EmptyView, ErrorView, LessonTerminal, LoadingView, Markdown } from "@/components";
 import { parseMarkdown } from "@/lib/markdown";
 import type { MarkdownBlock } from "@/lib/markdown";
 import type { LessonDetail } from "@/types";
@@ -16,6 +16,7 @@ export default function LessonPage() {
   const [lesson, setLesson] = useState<LessonDetail | null>(null);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
+  const [errorStatus, setErrorStatus] = useState<number | null>(null);
   const [completing, setCompleting] = useState(false);
   const [completed, setCompleted] = useState(false);
   const [completeMsg, setCompleteMsg] = useState<string | null>(null);
@@ -36,11 +37,13 @@ export default function LessonPage() {
     if (!slug) return;
     setLoading(true);
     setError(null);
+    setErrorStatus(null);
     try {
       const data = await apiLesson(slug);
       setLesson(data);
     } catch (err) {
       setError(err instanceof ApiError ? err.message : "课时加载失败");
+      setErrorStatus(err instanceof ApiError ? err.status : null);
       setLesson(null);
     } finally {
       setLoading(false);
@@ -80,9 +83,21 @@ export default function LessonPage() {
   }
 
   if (error && !lesson) {
+    const requiresLogin = errorStatus === 401;
     return (
       <div className="mx-auto max-w-6xl px-4 py-12 sm:px-6">
-        <ErrorView message={error} onRetry={load} hint="课时可能不存在，或内容服务尚未就绪。" />
+        <ErrorView
+          message={error}
+          onRetry={load}
+          hint={requiresLogin ? "请先登录后再查看课时内容和学习进度。" : "课时可能不存在，或内容服务尚未就绪。"}
+        />
+        {requiresLogin ? (
+          <div className="mt-4 text-center">
+            <Link href="/login" className="inline-flex rounded-lg bg-indigo-600 px-4 py-2 text-sm font-medium text-white transition hover:bg-indigo-700">
+              去登录
+            </Link>
+          </div>
+        ) : null}
       </div>
     );
   }
@@ -100,7 +115,8 @@ export default function LessonPage() {
   return (
     <div style={{ paddingLeft: contentPadding + "px" }} className="transition-[padding] duration-200">
       <SectionNavigation source={lesson.contentMarkdown} width={tocWidth} collapsed={tocCollapsed} onWidthChange={setTocWidth} onToggleCollapse={() => setTocCollapsed((v) => !v)} />
-      <div className="mx-auto max-w-4xl px-4 py-10 sm:px-6">
+      <div className="mx-auto grid max-w-7xl items-start gap-8 px-4 py-10 sm:px-6 lg:grid-cols-[minmax(0,1fr)_380px]">
+      <main className="min-w-0">
       <div className="flex items-center justify-between gap-3">
         <Link href={`/course/${lesson.courseSlug ?? "#"}`} className="text-sm font-medium text-indigo-600 hover:text-indigo-700">
           ← {lesson.courseTitle ?? "返回课程"}
@@ -185,6 +201,10 @@ export default function LessonPage() {
           </Link>
         ) : null}
       </div>
+      </main>
+      <aside className="min-w-0 lg:sticky lg:top-24">
+        <LessonTerminal courseSlug={lesson.courseSlug} />
+      </aside>
       </div>
     </div>
   );

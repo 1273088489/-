@@ -1,0 +1,24 @@
+{
+  "schemaVersion": "aegis.schema.v0",
+  "taskId": "2026-08-21-ttyd-learning-terminal",
+  "requiredBaselineRefs": [
+    "CONTEXT.md",
+    "docs/aegis/plans/2026-08-21-ttyd-learning-terminal.md",
+    "src/server/auth/session.ts",
+    "src/server/sandbox/docker.ts",
+    "src/server/sandbox/runner.ts",
+    "node_modules/next/dist/docs/01-app/02-guides/custom-server.md"
+  ],
+  "deliveredContextRefs": [],
+  "acknowledgedBeforePlanRefs": [],
+  "citedInPlanRefs": [],
+  "missingRefs": [
+    "CONTEXT.md",
+    "docs/aegis/plans/2026-08-21-ttyd-learning-terminal.md",
+    "src/server/auth/session.ts",
+    "src/server/sandbox/docker.ts",
+    "src/server/sandbox/runner.ts",
+    "node_modules/next/dist/docs/01-app/02-guides/custom-server.md"
+  ],
+  "decision": "needs-baseline-readback"
+}

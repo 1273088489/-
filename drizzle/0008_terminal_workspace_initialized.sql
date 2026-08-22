@@ -1,0 +1,1 @@
+ALTER TABLE `terminal_runtime` ADD `workspace_initialized_at` text DEFAULT '' NOT NULL;

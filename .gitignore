@@ -16,3 +16,6 @@ test-results
 # 本地工作规划/会话日志（不提交）
 .scratch/
 .agent-teams/
+
+# 本地原型页（不提交）
+src/app/prototype/

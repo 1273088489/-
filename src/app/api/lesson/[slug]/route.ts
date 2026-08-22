@@ -4,7 +4,8 @@ import { db } from "@/server/curriculum/service";
 import { lessons, exercises, learningRecords, courses } from "@/server/db/schema";
 import { getSessionUser } from "@/server/auth/session";
 import { ok, fail } from "@/lib/api";
-import type { ExerciseAnswerType, LearningStatus, LessonDetail } from "@/types";
+import type { ExerciseAnswerType, LearningStatus, LessonDetail, LessonTerminalStep } from "@/types";
+import { courses as courseDefs } from "@/server/curriculum/data";
 
 export const dynamic = "force-dynamic";
 
@@ -63,6 +64,7 @@ export async function GET(_req: NextRequest, { params }: Params) {
     courseTitle: course.title,
     status: learningStatus(lessonRecord?.status),
     mastery: lessonRecord?.mastery ?? 0,
+    terminalSteps: terminalStepsFor(lesson.slug),
     exercises: exerciseRows.map((exercise) => {
       const record = recordByKey.get(`exercise:${exercise.id}`);
       return {
@@ -82,6 +84,11 @@ export async function GET(_req: NextRequest, { params }: Params) {
   } satisfies LessonDetail;
 
   return ok(detail);
+}
+
+function terminalStepsFor(slug: string): LessonTerminalStep[] {
+  const lessonDef = courseDefs.flatMap((course) => course.lessons).find((item) => item.slug === slug);
+  return lessonDef?.terminalSteps ?? [];
 }
 
 function answerType(value: string): ExerciseAnswerType {
