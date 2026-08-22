@@ -204,13 +204,29 @@ export class OpenAiProvider implements AiProvider {
   readonly name = "openai";
   private client: OpenAI;
   private model: string;
+  private apiMode: "chat_completions" | "responses";
 
   constructor() {
     const apiKey = process.env.OPENAI_API_KEY;
     if (!apiKey) throw new Error("OpenAiProvider requires OPENAI_API_KEY");
+    this.apiMode = process.env.OPENAI_API_MODE === "responses" ? "responses" : "chat_completions";
     this.client = new OpenAI({
       apiKey,
       baseURL: process.env.OPENAI_BASE_URL || undefined,
+      // Some OpenAI-compatible gateways reject the SDK identification headers.
+      // Keep authentication and payload unchanged, but use the runtime fetch headers.
+      ...(this.apiMode === "responses"
+        ? {
+            fetch: async (input: RequestInfo | URL, init?: RequestInit) => {
+              const headers = new Headers(init?.headers);
+              headers.delete("user-agent");
+              for (const name of Array.from(headers.keys())) {
+                if (name.toLowerCase().startsWith("x-stainless-")) headers.delete(name);
+              }
+              return fetch(input, { ...init, headers });
+            },
+          }
+        : {}),
     });
     this.model = process.env.OPENAI_MODEL || "gpt-4o-mini";
   }
@@ -221,6 +237,22 @@ export class OpenAiProvider implements AiProvider {
     operation: AiOperation,
   ) {
     try {
+      if (this.apiMode === "responses") {
+        const system = messages.find((message) => message.role === "system")?.content;
+        const input = messages
+          .filter((message) => message.role !== "system")
+          .map((message) => `${message.role}: ${message.content}`)
+          .join("\n\n") + (json ? "\n\nPlease return valid JSON." : "");
+        const resp = await this.client.responses.create({
+          model: this.model,
+          ...(system ? { instructions: system } : {}),
+          input,
+          temperature: 0.3,
+          ...(json ? { text: { format: { type: "json_object" } } } : {}),
+        });
+        return resp.output_text ?? "";
+      }
+
       const resp = await this.client.chat.completions.create({
         model: this.model,
         messages,
