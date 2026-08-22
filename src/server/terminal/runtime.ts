@@ -14,7 +14,8 @@ const DEFAULT_INSTANCE_ID = process.env.TERMINAL_INSTANCE_ID ?? randomUUID();
 const COURSE_SLUG = /^[a-z0-9](?:[a-z0-9-]{0,62}[a-z0-9])?$/;
 const USER_ID = /^[A-Za-z0-9][A-Za-z0-9_.-]{0,63}$/;
 const DOCKER_NAME = /^[A-Za-z0-9][A-Za-z0-9_.-]{0,127}$/;
-const PINNED_IMAGE = /^.+@sha256:[a-f0-9]{64}$/;
+// 允许裸 sha256:<image-id>：本地构建镜像（docker/ttyd-node.Dockerfile）无 registry digest，但 image id 同样内容寻址、本地不可变，安全语义等价；生产仍推荐 registry digest pin
+const PINNED_IMAGE = /^(?:.+@sha256:|sha256:)[a-f0-9]{64}$/;
 const WORKSPACE_INITIALIZATION_VERSION = 2;
 
 function terminalTtlMs(options: TerminalRuntimeOptions): number {
@@ -53,7 +54,7 @@ function hashLabel(value: string): string {
 
 function assertPinnedImage(image: string): void {
   if (!PINNED_IMAGE.test(image)) {
-    throw new TerminalUnavailableError("terminal unavailable: TERMINAL_IMAGE must contain a full @sha256 digest");
+    throw new TerminalUnavailableError("terminal unavailable: TERMINAL_IMAGE must be a pinned @sha256:<digest> reference or a local sha256:<image-id>");
   }
 }
 

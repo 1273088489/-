@@ -77,4 +77,16 @@ npm run dev
 
 `docker pull` 只应由部署人员在启用终端前显式执行；应用运行时只做本地 `docker image inspect`，不会自动拉取镜像。终端没有 published port，浏览器只访问同源 `/terminal/{courseSlug}/`，正常退出会删除容器但保留课程卷和数据库记录；TTL 到期或显式重置才会删除卷。
 
+#### 本地开发：构建带 node/npm/git 的镜像
+
+本地构建镜像没有 registry digest，改用裸 `sha256:<image-id>` 引用（image id 同样内容寻址、本地不可变，安全语义等价）：
+
+```bash
+docker build -f docker/ttyd-node.Dockerfile -t qz-ttyd-node:local .
+docker image inspect --format '{{.Id}}' qz-ttyd-node:local
+TERMINAL_IMAGE="sha256:<上一步输出的 image-id>" npm run dev
+```
+
+注意：重建镜像后 image ID 会变化，旧容器下次访问时会被自动重建，但课程卷数据保留；apk 包版本随 alpine 仓库时间漂移，重建不是字节级复现。
+
 截至 2026-08-10，本项目安装并验证的主要版本为 Next.js 16.3.0、React 19.2.8、TypeScript 7.0.2、Drizzle ORM 0.45.2、better-sqlite3 13.0.3、Vitest 4.1.10 与 Playwright 1.62.1。

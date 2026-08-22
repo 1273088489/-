@@ -145,6 +145,14 @@ describe("terminal runtime", () => {
     expect(calls).toHaveLength(0);
   });
 
+  it("accepts a local sha256 image id and inspects it without pulling", async () => {
+    const image = "sha256:" + "a".repeat(64);
+    const calls: string[][] = [];
+    await getOrCreateTerminalRuntime({ db: memoryDb(), dockerExec: fakeDocker(calls), image, instanceId: "instance-1" }, "user-1", "course-1");
+    expect(calls[0]).toEqual(["image", "inspect", image]);
+    expect(calls.some((call) => call.includes("pull"))).toBe(false);
+  });
+
   it("rebuilds when the configured container lease changes", async () => {
     const calls: string[][] = [];
     const db = memoryDb();
